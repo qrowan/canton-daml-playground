@@ -11,7 +11,7 @@ Step 을 순서대로 거치면서 그 목표에 도달한다.
 | 01 | [용어](steps/Step01Terminology.md) | Canton 의 모든 기본 용어. 시나리오 서술 + 용어표. 코드 없음 | ✅ |
 | 02 | [환경 세팅](steps/Step02Environment.md) | Participant 기동, party·user 생성, HTTP 로 계약 생성·조회. 인터랙티브 러너 | ✅ |
 | 03 | [첫 계약](steps/Step03FirstContract.md) | Daml 문법. choice / controller / 권한 계산. 인터랙티브 러너 | ✅ |
-| 04 | 두 당사자 | Propose-accept. 다중 signatory 의 권한 결합 | 예정 |
+| 04 | [두 당사자](steps/Step04TwoParties.md) | Propose-accept. 권한 결합, observer. 인터랙티브 러너 | ✅ |
 | 05 | 다중 participant | `canton.conf` 로 노드 2개 + synchronizer. 신뢰 경계·vetting·토폴로지 | 예정 |
 | 06 | DvP | 증권 ↔ 현금 원자적 교환. 잠금 | 예정 |
 | 07 | 공시·감사 | Observer, disclosure, 감독기관 열람 | 예정 |

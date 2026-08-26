@@ -1,0 +1,242 @@
+{-
+
+================================================================================
+ Step 04 테스트 — propose / accept
+================================================================================
+
+Step 03 과 달리 `submit [Citi, Alice]` 를 쓰지 않는다. 모든 발행과 이체가
+각자 자기 권한만으로 제출된다. 실제 participant 분리 환경에서도 그대로 동작하는
+형태다.
+
+
+■ 등장 인물
+
+  Citi    발행 은행
+  Alice   Citi 의 고객
+  Bob     Morgan Stanley 의 고객 (이체 상대)
+  David   Citi 의 또 다른 고객 (제3자)
+
+
+■ 각 테스트가 검증하는 것
+
+  발행
+    testIssueViaProposal          Citi 가 혼자 제안 → Alice 가 수락 → 예금 생성
+    testProposalVisibleToOwner    제안이 Citi 와 Alice 에게만 보인다 (observer)
+    testRejectIssue               거절하면 예금이 생기지 않는다
+    testCancelIssue               제안자도 철회할 수 있다
+    testStrangerCannotAcceptIssue David 는 Alice 의 제안을 수락할 수 없다
+    testDirectIssueStillFails     여전히 한쪽 권한만으로는 예금을 못 만든다
+
+  이체
+    testTransferViaProposal       Alice 제안 → Bob 수락 → 소유권 이동
+    testProposalConsumesDeposit   제안이 살아있는 동안 예금 계약은 존재하지 않는다
+    testRejectReturnsDeposit      Bob 이 거절하면 Alice 에게 되돌아온다
+    testCancelReturnsDeposit      Alice 가 철회해도 되돌아온다
+    testStrangerCannotAccept      David 는 Bob 앞으로 온 제안을 수락할 수 없다
+    testCannotTransferToSelf      자기 자신에게는 이체할 수 없다
+
+================================================================================
+-}
+
+module Step04.DepositTest where
+
+import Daml.Script
+import DA.Assert ((===))
+import DA.Optional (isNone)
+import Step04.Deposit
+
+data Setup = Setup
+  with
+    citi : Party
+    alice : Party
+    bob : Party
+    david : Party
+
+setup : Script Setup
+setup = do
+  citi <- allocateParty "Citi"
+  alice <- allocateParty "Alice"
+  bob <- allocateParty "Bob"
+  david <- allocateParty "David"
+  pure Setup {citi, alice, bob, david}
+
+propose : Setup -> Decimal -> Script (ContractId DepositProposal)
+propose Setup{citi, alice} amount =
+  submit citi do
+    createCmd DepositProposal with
+      deposit = Deposit with bank = citi, owner = alice, amount
+
+issue : Setup -> Decimal -> Script (ContractId Deposit)
+issue s@Setup{alice} amount = do
+  proposalCid <- propose s amount
+  submit alice do
+    exerciseCmd proposalCid AcceptDeposit
+
+-- 발행 ------------------------------------------------------------------------
+
+testIssueViaProposal : Script ()
+testIssueViaProposal = do
+  s@Setup{citi, alice} <- setup
+
+  cid <- issue s 100.0
+
+  Some d <- queryContractId alice cid
+  d.bank === citi
+  d.owner === alice
+  d.amount === 100.0
+
+testProposalVisibleToOwner : Script ()
+testProposalVisibleToOwner = do
+  s@Setup{citi, alice, david} <- setup
+
+  _ <- propose s 100.0
+
+  citiSees <- query @DepositProposal citi
+  length citiSees === 1
+
+  aliceSees <- query @DepositProposal alice
+  length aliceSees === 1
+
+  davidSees <- query @DepositProposal david
+  davidSees === []
+
+testRejectIssue : Script ()
+testRejectIssue = do
+  s@Setup{alice} <- setup
+
+  proposalCid <- propose s 100.0
+  submit alice do
+    exerciseCmd proposalCid RejectDeposit
+
+  deposits <- query @Deposit alice
+  deposits === []
+  proposals <- query @DepositProposal alice
+  proposals === []
+
+testCancelIssue : Script ()
+testCancelIssue = do
+  s@Setup{citi, alice} <- setup
+
+  proposalCid <- propose s 100.0
+  submit citi do
+    exerciseCmd proposalCid CancelDeposit
+
+  deposits <- query @Deposit alice
+  deposits === []
+
+testStrangerCannotAcceptIssue : Script ()
+testStrangerCannotAcceptIssue = do
+  s@Setup{david} <- setup
+
+  proposalCid <- propose s 100.0
+
+  submitMustFail david do
+    exerciseCmd proposalCid AcceptDeposit
+
+testDirectIssueStillFails : Script ()
+testDirectIssueStillFails = do
+  Setup{citi, alice} <- setup
+
+  submitMustFail citi do
+    createCmd Deposit with bank = citi, owner = alice, amount = 100.0
+
+  submitMustFail alice do
+    createCmd Deposit with bank = citi, owner = alice, amount = 100.0
+
+-- 이체 ------------------------------------------------------------------------
+
+testTransferViaProposal : Script ()
+testTransferViaProposal = do
+  s@Setup{citi, alice, bob} <- setup
+
+  depositCid <- issue s 100.0
+
+  proposalCid <- submit alice do
+    exerciseCmd depositCid ProposeTransfer with newOwner = bob
+
+  bobCid <- submit bob do
+    exerciseCmd proposalCid AcceptTransfer
+
+  Some d <- queryContractId bob bobCid
+  d.owner === bob
+  d.bank === citi
+  d.amount === 100.0
+
+  aliceDeposits <- query @Deposit alice
+  aliceDeposits === []
+
+testProposalConsumesDeposit : Script ()
+testProposalConsumesDeposit = do
+  s@Setup{alice, bob} <- setup
+
+  depositCid <- issue s 100.0
+
+  _ <- submit alice do
+    exerciseCmd depositCid ProposeTransfer with newOwner = bob
+
+  gone <- queryContractId alice depositCid
+  isNone gone === True
+
+  aliceDeposits <- query @Deposit alice
+  aliceDeposits === []
+
+  aliceProposals <- query @TransferProposal alice
+  length aliceProposals === 1
+
+testRejectReturnsDeposit : Script ()
+testRejectReturnsDeposit = do
+  s@Setup{alice, bob} <- setup
+
+  depositCid <- issue s 100.0
+
+  proposalCid <- submit alice do
+    exerciseCmd depositCid ProposeTransfer with newOwner = bob
+
+  returnedCid <- submit bob do
+    exerciseCmd proposalCid RejectTransfer
+
+  Some d <- queryContractId alice returnedCid
+  d.owner === alice
+  d.amount === 100.0
+
+  bobDeposits <- query @Deposit bob
+  bobDeposits === []
+
+testCancelReturnsDeposit : Script ()
+testCancelReturnsDeposit = do
+  s@Setup{alice, bob} <- setup
+
+  depositCid <- issue s 100.0
+
+  proposalCid <- submit alice do
+    exerciseCmd depositCid ProposeTransfer with newOwner = bob
+
+  returnedCid <- submit alice do
+    exerciseCmd proposalCid CancelTransfer
+
+  Some d <- queryContractId alice returnedCid
+  d.owner === alice
+
+  aliceDeposits <- query @Deposit alice
+  length aliceDeposits === 1
+
+testStrangerCannotAccept : Script ()
+testStrangerCannotAccept = do
+  s@Setup{alice, bob, david} <- setup
+
+  depositCid <- issue s 100.0
+
+  proposalCid <- submit alice do
+    exerciseCmd depositCid ProposeTransfer with newOwner = bob
+
+  submitMustFail david do
+    exerciseCmd proposalCid AcceptTransfer
+
+testCannotTransferToSelf : Script ()
+testCannotTransferToSelf = do
+  s@Setup{alice} <- setup
+
+  depositCid <- issue s 100.0
+
+  submitMustFail alice do
+    exerciseCmd depositCid ProposeTransfer with newOwner = alice
