@@ -26,7 +26,7 @@ Sandbox 기동과 종료도 스크립트가 처리한다.
 | `--auto` | 엔터 없이 전부 실행 |
 | `--keep` | 끝나고 sandbox 를 끄지 않는다. 직접 더 만져보고 싶을 때 |
 
-`--keep` 으로 끝내면 `API` / `CITI` / `ALICE` / `BOB` / `PKG` 값을 출력해 주므로,
+`--keep` 으로 끝내면 `API` / `CITI` / `ALICE` / `DAVID` / `PKG` 값을 출력해 주므로,
 같은 터미널에서 `curl` 을 이어서 던져볼 수 있다.
 
 사전에 [README](../README.md) 의 세팅(`env.sh` 생성)이 끝나 있어야 한다.
@@ -37,17 +37,20 @@ Sandbox 기동과 종료도 스크립트가 처리한다.
 | --- | --- |
 | **Citi** | 토큰화 예금을 발행하는 은행 (party) |
 | **Alice** | Citi 의 고객 (party) |
-| **Bob** | 제3자 (party) |
+| **David** | Citi 의 또 다른 고객 (party) |
 
 셋 다 같은 participant 가 발급한 **hosted party** 다. 자기 키를 갖고 있지 않다.
 
-Step 01 의 시나리오에서 Bob 은 Morgan Stanley 고객이지만, sandbox 는 participant 가
-하나뿐이라 여기서는 같은 노드에 둔다. 노드를 분리하는 것은 Step 05 다.
+Alice 와 David 는 **같은 은행의 고객이고 같은 노드에 있다.** 그런데도 서로의 예금이
+보이지 않는다 — 프라이버시의 단위가 기관이나 노드가 아니라 **party** 임을 보여준다.
+
+다른 은행 고객인 Bob 은 participant 를 분리하는 Step 05 에서 등장한다.
 
 ## 사용하는 템플릿
 
-`daml/Deposit.daml`. 문법은 Step 03 에서 다루고, 여기서는 원장 동작을 보기 위한
-최소 재료로만 쓴다.
+`daml/Step02/Deposit.daml`. 문법은 Step 03 에서 다루고, 여기서는 원장 동작을 보기
+위한 최소 재료로만 쓴다. **이 파일은 Step 02 시점의 상태로 고정되어 있고 이후 Step 이
+수정하지 않는다.**
 
 ```daml
 template Deposit
@@ -75,8 +78,8 @@ template Deposit
 | 7 | package-id | 내용 해시. 원장에 vetting 된 것과 대조 |
 | 8 | 권한 부족 | Citi 권한만으로는 예금 생성 실패 |
 | 9 | 양쪽 권한 | `actAs` 에 Citi + Alice → 성공 |
-| 10 | 조회 | Alice 는 계약을 보고, Bob 은 빈 배열 |
-| 11 | 위조 시도 | Bob 이 Alice 명의로 만들려 하면 거부 |
+| 10 | 조회 | Alice 는 계약을 보고, David 는 빈 배열 |
+| 11 | 위조 시도 | David 가 Alice 명의로 만들려 하면 거부 |
 | 12 | 정리 | 확인한 것 요약 |
 
 ## 이 Step 에서 반드시 남아야 할 것
@@ -100,7 +103,7 @@ Cannot allocate a party without being connected to a synchronizer
 ```
 Citi::12204ca735307c57cae751278f174ec2610f3147dc5fd8acb5a4b1a1f335564adc05
 Alice::12204ca735307c57cae751278f174ec2610f3147dc5fd8acb5a4b1a1f335564adc05
-Bob::12204ca735307c57cae751278f174ec2610f3147dc5fd8acb5a4b1a1f335564adc05
+David::12204ca735307c57cae751278f174ec2610f3147dc5fd8acb5a4b1a1f335564adc05
 sandbox::12204ca735307c57cae751278f174ec2610f3147dc5fd8acb5a4b1a1f335564adc05
 ```
 
@@ -125,18 +128,18 @@ INVALID_TOKEN: The submitted request is missing a user-id
 
 ```
 DAML_AUTHORIZATION_ERROR
-requires authorizers Alice::1220..., but only Bob::1220... were given
+requires authorizers Alice::1220..., but only David::1220... were given
 ```
 
 `createArguments` 에 `owner` 를 Alice 로 쓴 것이 Alice 의 권한을 만들어주지 않는다.
 
-**에러에 `bob-web` 이라는 user 이름이 없다.** User 는 "Bob 을 주장해도 되는가"만
+**에러에 `david-web` 이라는 user 이름이 없다.** User 는 "David 를 주장해도 되는가"만
 판정하고 사라졌고, Daml 엔진에는 party 만 도달했다. 앞에 붙은 64자 해시는 어떤
 코드로 검증했는지의 기록이다.
 
 ### 5. 지금의 프라이버시는 절반이다
 
-10단계에서 Bob 의 조회 결과가 `[]` 다. 하지만 **participant 가 하나**이므로
+10단계에서 David 의 조회 결과가 `[]` 다. 하지만 **participant 가 하나**이므로
 물리적으로는 같은 노드가 양쪽 데이터를 갖고 있고, Ledger API 가 party 단위로 뷰를
 분리해 보여주는 것이다.
 
@@ -162,19 +165,20 @@ namespace 지문부터 새로 생성되므로, 이전 실행의 party ID 는 무
 export API=http://localhost:7575
 export CITI='Citi::1220...'   # 출력값 복사
 export ALICE='Alice::1220...'
+export DAVID='David::1220...'
 export PKG=...
 ```
 
 예금을 하나 더 만들어 본다.
 
 ```sh
-curl -s -X POST $API/v2/commands/submit-and-wait -H 'Content-Type: application/json' -d "{\"commands\":[{\"CreateCommand\":{\"templateId\":\"$PKG:Deposit:Deposit\",\"createArguments\":{\"bank\":\"$CITI\",\"owner\":\"$ALICE\",\"amount\":\"250.0\"}}}],\"commandId\":\"manual-1\",\"userId\":\"citi-settlement\",\"actAs\":[\"$CITI\",\"$ALICE\"],\"readAs\":[]}" | python3 -m json.tool
+curl -s -X POST $API/v2/commands/submit-and-wait -H 'Content-Type: application/json' -d "{\"commands\":[{\"CreateCommand\":{\"templateId\":\"$PKG:Step02.Deposit:Deposit\",\"createArguments\":{\"bank\":\"$CITI\",\"owner\":\"$ALICE\",\"amount\":\"250.0\"}}}],\"commandId\":\"manual-1\",\"userId\":\"citi-settlement\",\"actAs\":[\"$CITI\",\"$ALICE\"],\"readAs\":[]}" | python3 -m json.tool
 ```
 
 `ensure amount > 0.0` 를 위반해 본다.
 
 ```sh
-curl -s -X POST $API/v2/commands/submit-and-wait -H 'Content-Type: application/json' -d "{\"commands\":[{\"CreateCommand\":{\"templateId\":\"$PKG:Deposit:Deposit\",\"createArguments\":{\"bank\":\"$CITI\",\"owner\":\"$ALICE\",\"amount\":\"0.0\"}}}],\"commandId\":\"manual-2\",\"userId\":\"citi-settlement\",\"actAs\":[\"$CITI\",\"$ALICE\"],\"readAs\":[]}" | python3 -m json.tool
+curl -s -X POST $API/v2/commands/submit-and-wait -H 'Content-Type: application/json' -d "{\"commands\":[{\"CreateCommand\":{\"templateId\":\"$PKG:Step02.Deposit:Deposit\",\"createArguments\":{\"bank\":\"$CITI\",\"owner\":\"$ALICE\",\"amount\":\"0.0\"}}}],\"commandId\":\"manual-2\",\"userId\":\"citi-settlement\",\"actAs\":[\"$CITI\",\"$ALICE\"],\"readAs\":[]}" | python3 -m json.tool
 ```
 
 끝나면 `pkill -f canton`.
@@ -194,5 +198,5 @@ Participant 가 **1개뿐**이라 Canton 고유의 것 대부분이 재현되지
 
 ---
 
-다음: **Step 03 — 첫 계약.** `Deposit.daml` 의 문법을 읽고, `Transfer` choice 를
-추가해 예금을 이체할 수 있게 만든다.
+다음: **[Step 03 — 첫 계약](Step03FirstContract.md).** Daml 문법을 읽고 choice 를
+추가한다. 그리고 이체가 왜 아직 불가능한지 확인한다.

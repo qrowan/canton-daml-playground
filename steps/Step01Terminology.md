@@ -18,6 +18,7 @@ Canton 의 용어를 하나의 시나리오를 끝까지 따라가며 익힌다.
 | **Citi** | 상업은행. 토큰화 예금 발행 | Participant 운영 + party |
 | **Morgan Stanley** | 투자은행. Bob 의 증권사 | Participant 운영 + party |
 | **Alice** | Citi 의 개인 고객 | Party (Citi 가 발급) |
+| **David** | Citi 의 또 다른 개인 고객 | Party (Citi 가 발급) |
 | **Bob** | Morgan Stanley 의 개인 고객 | Party (Morgan Stanley 가 발급) |
 
 이후 Step 에서 등장:

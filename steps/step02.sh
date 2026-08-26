@@ -75,7 +75,7 @@ cat <<'BANNER'
  등장 인물
    Citi    토큰화 예금을 발행하는 은행       (party)
    Alice   Citi 의 고객                      (party)
-   Bob     제3자                             (party)
+   David   Citi 의 또 다른 고객               (party)
 
  Step 01 에서 정의한 용어가 실제로 무엇인지 눈으로 본다.
 BANNER
@@ -132,7 +132,7 @@ pause
 
 run "unzip -l '$DAR' | grep -E '\\.dalf' | awk '{print \$4}' | head -4"
 printf '\n'
-run "unzip -l '$DAR' | grep -E 'Deposit\\.daml' | awk '{print \$4}'"
+run "unzip -l '$DAR' | grep -E 'Step02/Deposit\\.daml' | awk '{print \$4}'"
 note "원본 소스도 들어 있다 — 상대가 준 DAR 을 감사할 수 있는 이유다."
 
 # ─── 3. sandbox 기동 ─────────────────────────────────────────────────────────
@@ -188,12 +188,12 @@ note "어떤 party 도 대리하지 않는다. 다음 두 단계는 이 계정 �
 
 # ─── 5. party 생성 ───────────────────────────────────────────────────────────
 
-title "party 생성 — Citi, Alice, Bob"
+title "party 생성 — Citi, Alice, David"
 say "Canton 은 party 를 기본 제공하지 않는다. participant 운영자가 발급한다."
 say "partyIdHint 로 이름 힌트를 준다."
 pause
 
-for hint in Citi Alice Bob; do
+for hint in Citi Alice David; do
   run "curl -s -X POST \$API/v2/parties -H 'Content-Type: application/json' -d '{\"partyIdHint\":\"$hint\",\"identityProviderId\":\"\"}' | python3 -c 'import sys,json; d=json.load(sys.stdin); print(d.get(\"partyDetails\",d).get(\"party\", d))'"
 done
 
@@ -206,18 +206,18 @@ print(ps[0] if ps else '')
 }
 export CITI=$(findparty Citi)
 export ALICE=$(findparty Alice)
-export BOB=$(findparty Bob)
-[ -n "$CITI" ] && [ -n "$ALICE" ] && [ -n "$BOB" ] || die "party 생성에 실패했습니다. 위 응답을 확인하세요."
+export DAVID=$(findparty David)
+[ -n "$CITI" ] && [ -n "$ALICE" ] && [ -n "$DAVID" ] || die "party 생성에 실패했습니다. 위 응답을 확인하세요."
 
 printf '\n'
 ok "CITI  = $CITI"
 ok "ALICE = $ALICE"
-ok "BOB   = $BOB"
+ok "DAVID = $DAVID"
 printf '\n'
 say "${B}주목할 것${R} — 세 party 의 :: 뒷부분이 모두 같다."
-run "echo \"\$CITI\" \"\$ALICE\" \"\$BOB\" | tr ' ' '\\n' | sed 's/.*:://' | sort -u"
+run "echo \"\$CITI\" \"\$ALICE\" \"\$DAVID\" | tr ' ' '\\n' | sed 's/.*:://' | sort -u"
 note "이것이 namespace fingerprint 이고, 이 party 들을 발급한 키의 지문이다."
-note "셋 다 같은 participant 가 발급했으므로 동일하다. Alice 와 Bob 은 hosted party 이고"
+note "셋 다 같은 participant 가 발급했으므로 동일하다. Alice 와 David 는 hosted party 이고"
 note "자기 키를 갖고 있지 않다."
 
 # ─── 6. user 생성 ────────────────────────────────────────────────────────────
@@ -248,8 +248,8 @@ printf '%s$ POST /v2/users  (id=citi-settlement, CanActAs Citi + Alice)%s\n\n' "
 mkuser citi-settlement "$CITI" "$ALICE"
 printf '%s$ POST /v2/users  (id=alice-web, CanActAs Alice)%s\n\n' "$YE" "$R"
 mkuser alice-web "$ALICE"
-printf '%s$ POST /v2/users  (id=bob-web, CanActAs Bob)%s\n\n' "$YE" "$R"
-mkuser bob-web "$BOB"
+printf '%s$ POST /v2/users  (id=david-web, CanActAs David)%s\n\n' "$YE" "$R"
+mkuser david-web "$DAVID"
 
 printf '\n'
 run "curl -s \$API/v2/users/citi-settlement/rights | python3 -c 'import sys,json; rs=json.load(sys.stdin)[\"rights\"]; [print(\" \", list(r[\"kind\"])[0], \"→\", list(r[\"kind\"].values())[0][\"value\"][\"party\"].split(\"::\")[0]) for r in rs]'"
@@ -277,7 +277,7 @@ say "Deposit 의 signatory 는 bank 와 owner 둘이다."
 say "Citi 권한만으로 제출하면 Alice 의 동의가 없어 거부된다."
 pause
 
-DEP="$PKG:Deposit:Deposit"
+DEP="$PKG:Step02.Deposit:Deposit"
 run "curl -s -X POST \$API/v2/commands/submit-and-wait -H 'Content-Type: application/json' -d '{\"commands\":[{\"CreateCommand\":{\"templateId\":\"$DEP\",\"createArguments\":{\"bank\":\"'\$CITI'\",\"owner\":\"'\$ALICE'\",\"amount\":\"100.0\"}}}],\"commandId\":\"s02-fail1\",\"userId\":\"citi-settlement\",\"actAs\":[\"'\$CITI'\"],\"readAs\":[]}' | python3 -c 'import sys,json; d=json.load(sys.stdin); print(\"code :\", d.get(\"code\")); print(\"cause:\", d.get(\"cause\",\"\")[:200])'"
 note "DAML_AUTHORIZATION_ERROR. requires authorizers 에 Alice 가 포함되어 있다."
 
@@ -319,11 +319,11 @@ for e in d:
 print(f"  총 {len(d)}건")
 '
 
-printf '\n%s$ POST /v2/state/active-contracts  (Bob 시점)%s\n\n' "$YE" "$R"
-acs "$BOB" | python3 -c 'import sys,json; d=json.load(sys.stdin); print("  결과:", d, f"→ {len(d)}건")'
+printf '\n%s$ POST /v2/state/active-contracts  (David 시점)%s\n\n' "$YE" "$R"
+acs "$DAVID" | python3 -c 'import sys,json; d=json.load(sys.stdin); print("  결과:", d, f"→ {len(d)}건")'
 
 printf '\n'
-say "${B}Bob 에게는 아무것도 보이지 않는다.${R} Bob 은 이 계약의 signatory 도 observer 도"
+say "${B}David 에게는 아무것도 보이지 않는다.${R} David 는 이 계약의 signatory 도 observer 도"
 say "아니므로 stakeholder 가 아니고, 데이터가 전달되지 않는다."
 printf '\n'
 warn "단 지금은 participant 가 하나다. 물리적으로는 같은 노드가 양쪽 데이터를 갖고 있고"
@@ -332,15 +332,15 @@ warn "비로소 데이터 자체가 도달하지 않는다. Step 05 에서 확�
 
 # ─── 11. 권한 위조 시도 ──────────────────────────────────────────────────────
 
-title "Bob 이 Alice 명의로 예금을 날조할 수 있는가"
-say "createArguments 의 owner 에 Alice 를 쓰고 Bob 권한으로 제출한다."
+title "David 가 Alice 명의로 예금을 날조할 수 있는가"
+say "createArguments 의 owner 에 Alice 를 쓰고 David 권한으로 제출한다."
 pause
 
-run "curl -s -X POST \$API/v2/commands/submit-and-wait -H 'Content-Type: application/json' -d '{\"commands\":[{\"CreateCommand\":{\"templateId\":\"$DEP\",\"createArguments\":{\"bank\":\"'\$CITI'\",\"owner\":\"'\$ALICE'\",\"amount\":\"999.0\"}}}],\"commandId\":\"s02-forge\",\"userId\":\"bob-web\",\"actAs\":[\"'\$BOB'\"],\"readAs\":[]}' | python3 -c 'import sys,json; d=json.load(sys.stdin); print(\"code :\", d.get(\"code\")); print(\"cause:\", d.get(\"cause\",\"\")[:260])'"
+run "curl -s -X POST \$API/v2/commands/submit-and-wait -H 'Content-Type: application/json' -d '{\"commands\":[{\"CreateCommand\":{\"templateId\":\"$DEP\",\"createArguments\":{\"bank\":\"'\$CITI'\",\"owner\":\"'\$ALICE'\",\"amount\":\"999.0\"}}}],\"commandId\":\"s02-forge\",\"userId\":\"david-web\",\"actAs\":[\"'\$DAVID'\"],\"readAs\":[]}' | python3 -c 'import sys,json; d=json.load(sys.stdin); print(\"code :\", d.get(\"code\")); print(\"cause:\", d.get(\"cause\",\"\")[:260])'"
 
 printf '\n'
 say "${B}세 가지를 확인할 것.${R}"
-say "  1. ${B}bob-web 이라는 user 이름이 에러에 없다.${R} user 는 'Bob 을 주장해도 되는가'만"
+say "  1. ${B}david-web 이라는 user 이름이 에러에 없다.${R} user 는 'David 를 주장해도 되는가'만"
 say "     판정하고 사라졌다. Daml 엔진에는 party 만 도달한다."
 say "  2. ${B}requires authorizers${R} — createArguments 에 owner 를 Alice 로 쓴 것이"
 say "     Alice 의 권한을 만들어주지 않았다. 권한은 template 의 signatory 선언에서 나온다."
@@ -352,13 +352,13 @@ title "확인한 것"
 cat <<SUMMARY
 
   Participant node   sandbox 하나가 participant + sequencer + mediator
-  Party              Citi / Alice / Bob. :: 뒷부분이 발급 키의 지문
+  Party              Citi / Alice / David. :: 뒷부분이 발급 키의 지문
   Hosted party       셋 다 같은 지문 → participant 가 발급 → 자기 키 없음
   User               citi-settlement 하나가 두 party 를 대리 (N:M)
   ParticipantAdmin   party·user 생성은 노드 운영 작업
   DAR / package-id   내용 해시로 코드를 지목
   Signatory          bank + owner 양쪽 동의 → 한쪽만으로는 생성 불가
-  ACS                party 시점으로 조회, Bob 에게는 보이지 않음
+  ACS                party 시점으로 조회, David 에게는 보이지 않음
   권한 검사          필드에 이름을 쓴 것이 권한이 되지 않음
 
   ${B}다음${R}  Step 03 — Deposit.daml 의 문법을 읽고, choice 를 추가해
@@ -371,7 +371,7 @@ if [ "$KEEP" = 1 ]; then
   note "  export API=http://localhost:7575"
   note "  export CITI='$CITI'"
   note "  export ALICE='$ALICE'"
-  note "  export BOB='$BOB'"
+  note "  export DAVID='$DAVID'"
   note "  export PKG=$PKG"
 else
   say "sandbox 를 종료한다. 인메모리이므로 party·user·계약이 모두 사라진다."

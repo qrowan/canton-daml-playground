@@ -10,7 +10,7 @@ Step 을 순서대로 거치면서 그 목표에 도달한다.
 | --- | --- | --- | --- |
 | 01 | [용어](steps/Step01Terminology.md) | Canton 의 모든 기본 용어. 시나리오 서술 + 용어표. 코드 없음 | ✅ |
 | 02 | [환경 세팅](steps/Step02Environment.md) | Participant 기동, party·user 생성, HTTP 로 계약 생성·조회. 인터랙티브 러너 | ✅ |
-| 03 | 첫 계약 | Daml 문법. template / signatory / choice | 예정 |
+| 03 | [첫 계약](steps/Step03FirstContract.md) | Daml 문법. choice / controller / 권한 계산. 인터랙티브 러너 | ✅ |
 | 04 | 두 당사자 | Propose-accept. 다중 signatory 의 권한 결합 | 예정 |
 | 05 | 다중 participant | `canton.conf` 로 노드 2개 + synchronizer. 신뢰 경계·vetting·토폴로지 | 예정 |
 | 06 | DvP | 증권 ↔ 현금 원자적 교환. 잠금 | 예정 |
@@ -100,12 +100,20 @@ env.sh            로컬 환경 (gitignore)
 컨벤션이 아니라 컴파일러가 강제한다.
 
 ```
-daml/Deposit.daml           →  module Deposit where
-daml/Workflow/Dvp.daml      →  module Workflow.Dvp where
+daml/Step02/Deposit.daml    →  module Step02.Deposit where
+daml/Step03/Deposit.daml    →  module Step03.Deposit where
 ```
 
-모듈명은 컨트랙트명이 아니라 **도메인 또는 워크플로**를 따른다. 한 모듈에 관련 템플릿
-여러 개를 담는다 — Daml 의 propose/accept 패턴은 템플릿 2~3개가 항상 세트로 움직인다.
+실무에서는 모듈명이 컨트랙트명이 아니라 **도메인 또는 워크플로**를 따르고, 한 모듈에
+관련 템플릿 여러 개를 담는다 — Daml 의 propose/accept 패턴은 템플릿 2~3개가 항상
+세트로 움직이기 때문이다.
+
+이 저장소는 **Step 별로 모듈을 나눈다.** 각 Step 의 코드가 그 시점 상태로 고정되어야
+이전 Step 을 언제든 다시 실행할 수 있고 문서가 낡지 않기 때문이다. 튜토리얼 전용
+구성이며 실무 컨벤션이 아니다.
+
+패키지는 하나로 유지한다. 따라서 package-id 는 전체가 공유하고, 템플릿은 모듈명으로
+구분된다 (`<package-id>:Step02.Deposit:Deposit`).
 
 ### 네이밍 규칙
 

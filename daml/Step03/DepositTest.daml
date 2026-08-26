@@ -1,0 +1,188 @@
+{-
+
+================================================================================
+ Deposit 테스트 — Daml Script
+================================================================================
+
+`daml test` 로 전부 실행된다. 인메모리 엔진이므로 빠르지만 Canton 이 아니다.
+Sequencer·Mediator·확인 프로토콜이 없다. 로직을 빠르게 검증하는 개발 루프용이고,
+원장 동작 확인은 Step 02 의 러너로 한다.
+
+
+■ Daml Script API
+
+  allocateParty <이름>      테스트용 party 생성
+  submit <party>            그 party 의 권한으로 커맨드 제출
+  submit [<p1>, <p2>]       여러 party 권한으로 제출
+  submitMustFail            제출이 반드시 실패해야 함을 검증
+  createCmd                 계약 생성 커맨드
+  exerciseCmd               choice 행사 커맨드
+  query @<템플릿> <party>   그 party 에게 보이는 계약 전체
+  queryContractId           계약 ID 로 하나 조회 (Optional 반환)
+  (===)                     단정. 다르면 실패
+
+
+■ submit [Citi, Alice] 는 테스트 전용이다
+
+  두 party 의 권한을 동시에 쓰는 것은 한 participant 가 양쪽을 호스팅할 때만
+  가능하다. Citi 와 Morgan Stanley 처럼 노드가 다르면 불가능하고,
+  그때 필요한 것이 Step 04 의 propose/accept 다.
+
+
+■ 각 테스트가 검증하는 것
+
+  testIssue                 양쪽 권한으로 발행된다
+  testBankAloneCannotIssue  Citi 혼자서는 발행할 수 없다
+  testOwnerAloneCannotIssue Alice 혼자서도 발행할 수 없다
+  testEnsureRejectsZero     ensure 위반은 원장에 기록되지 않는다
+  testShowBalance           nonconsuming 은 계약을 소비하지 않는다
+  testPartialWithdraw       일부 인출 시 새 계약이 생기고 옛 ID 는 무효가 된다
+  testFullWithdraw          전액 인출 시 계약이 사라진다
+  testWithdrawTooMuch       잔액을 넘는 인출은 거부된다
+  testBankAddsInterest      bank 혼자 행사해도 통과한다 — 권한 결합의 결과
+  testOwnerCannotAddInterest controller 가 아니면 행사할 수 없다
+  testTransferFails         Transfer 는 newOwner 의 권한이 없어 실패한다
+
+================================================================================
+-}
+
+module Step03.DepositTest where
+
+import Daml.Script
+import DA.Assert ((===))
+import DA.Optional (isNone, isSome)
+import Step03.Deposit
+
+data Setup = Setup
+  with
+    citi : Party
+    alice : Party
+    bob : Party
+
+setup : Script Setup
+setup = do
+  citi <- allocateParty "Citi"
+  alice <- allocateParty "Alice"
+  bob <- allocateParty "Bob"
+  pure Setup {citi, alice, bob}
+
+issue : Setup -> Decimal -> Script (ContractId Deposit)
+issue Setup{citi, alice} amount =
+  submit [citi, alice] do
+    createCmd Deposit with bank = citi, owner = alice, amount
+
+testIssue : Script ()
+testIssue = do
+  s@Setup{citi, alice} <- setup
+
+  cid <- issue s 100.0
+
+  Some d <- queryContractId alice cid
+  d.bank === citi
+  d.owner === alice
+  d.amount === 100.0
+
+testBankAloneCannotIssue : Script ()
+testBankAloneCannotIssue = do
+  Setup{citi, alice} <- setup
+
+  submitMustFail citi do
+    createCmd Deposit with bank = citi, owner = alice, amount = 100.0
+
+testOwnerAloneCannotIssue : Script ()
+testOwnerAloneCannotIssue = do
+  Setup{citi, alice} <- setup
+
+  submitMustFail alice do
+    createCmd Deposit with bank = citi, owner = alice, amount = 100.0
+
+testEnsureRejectsZero : Script ()
+testEnsureRejectsZero = do
+  Setup{citi, alice} <- setup
+
+  submitMustFail [citi, alice] do
+    createCmd Deposit with bank = citi, owner = alice, amount = 0.0
+
+testShowBalance : Script ()
+testShowBalance = do
+  s@Setup{alice} <- setup
+
+  cid <- issue s 100.0
+
+  balance <- submit alice do
+    exerciseCmd cid ShowBalance
+  balance === 100.0
+
+  stillThere <- queryContractId alice cid
+  isSome stillThere === True
+
+testPartialWithdraw : Script ()
+testPartialWithdraw = do
+  s@Setup{alice} <- setup
+
+  oldCid <- issue s 100.0
+
+  Some newCid <- submit alice do
+    exerciseCmd oldCid Withdraw with requested = 30.0
+
+  gone <- queryContractId alice oldCid
+  isNone gone === True
+
+  Some d <- queryContractId alice newCid
+  d.amount === 70.0
+
+testFullWithdraw : Script ()
+testFullWithdraw = do
+  s@Setup{alice} <- setup
+
+  cid <- issue s 100.0
+
+  result <- submit alice do
+    exerciseCmd cid Withdraw with requested = 100.0
+  isNone result === True
+
+  deposits <- query @Deposit alice
+  deposits === []
+
+testWithdrawTooMuch : Script ()
+testWithdrawTooMuch = do
+  s@Setup{alice} <- setup
+
+  cid <- issue s 100.0
+
+  submitMustFail alice do
+    exerciseCmd cid Withdraw with requested = 100.01
+
+testBankAddsInterest : Script ()
+testBankAddsInterest = do
+  s@Setup{citi, alice} <- setup
+
+  cid <- issue s 100.0
+
+  newCid <- submit citi do
+    exerciseCmd cid AddInterest with rate = 0.05
+
+  Some d <- queryContractId alice newCid
+  d.amount === 105.0
+  d.owner === alice
+
+testOwnerCannotAddInterest : Script ()
+testOwnerCannotAddInterest = do
+  s@Setup{alice} <- setup
+
+  cid <- issue s 100.0
+
+  submitMustFail alice do
+    exerciseCmd cid AddInterest with rate = 0.05
+
+testTransferFails : Script ()
+testTransferFails = do
+  s@Setup{alice, bob} <- setup
+
+  cid <- issue s 100.0
+
+  submitMustFail alice do
+    exerciseCmd cid Transfer with newOwner = bob
+
+  deposits <- query @Deposit alice
+  length deposits === 1

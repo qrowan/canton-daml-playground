@@ -1,0 +1,133 @@
+{-
+
+================================================================================
+ 토큰화 예금 — Citi 가 발행하고 고객이 보유한다
+================================================================================
+
+Step 02 에서는 이 계약을 만들고 조회만 했다. Step 03 에서는 choice 를 추가해
+계약에 무슨 일이 일어날 수 있는지를 정의한다.
+
+파일 상단은 설명, module 선언 아래는 구현이다. 구현부에는 주석을 두지 않는다.
+
+
+■ 템플릿 구조
+
+  template <이름>
+    with        필드 — 원장에 기록될 데이터
+      ...
+    where       규칙 — 누가 서명하고 무엇을 할 수 있는가
+      ...
+
+  signatory   이 계약이 성립하려면 동의가 필요한 party.
+              bank 와 owner 둘이므로 한쪽만으로는 만들 수 없다.
+
+  ensure      원장에 기록되기 전 항상 검사되는 불변식.
+              위반하면 계약이 생성되지 않는다.
+
+
+■ Choice 구조
+
+  choice <이름> : <반환 타입>
+    with
+      <인자> : <타입>        행사할 때 넘기는 값
+    controller <party>       이 choice 를 행사할 수 있는 party
+    do
+      <Update 액션>          본문
+
+  choice 는 기본이 consuming 이다. 행사되면 그 계약은 archive 된다.
+  소비하지 않으려면 nonconsuming 을 앞에 붙인다.
+
+
+■ 권한이 어떻게 계산되는가
+
+  choice 를 행사하면 권한이 이렇게 합쳐진다.
+
+      [그 계약의 signatory] + [choice 의 controller]
+
+  AddInterest 를 예로 들면:
+
+      signatory  = bank, owner
+      controller = bank
+      → 권한     = bank, owner
+
+  그래서 bank 혼자 행사해도 bank+owner 서명이 필요한 새 계약을 만들 수 있다.
+
+  이것이 중요한 함의를 갖는다. **계약에 서명한다는 것은 그 template 에 선언된
+  모든 choice 에 동의한다는 뜻**이다. Alice 는 Deposit 을 수락한 시점에
+  "Citi 가 이자를 붙일 수 있다"에 이미 동의했다. 매번 다시 묻지 않는다.
+
+  현실의 계약과 같다. 약관에 서명하면 그 약관의 조항이 발동할 때마다
+  다시 서명하지 않는다.
+
+
+■ Contract 는 수정되지 않는다
+
+  Withdraw 로 잔액을 줄이는 것은 필드를 바꾸는 것이 아니다.
+  기존 계약을 소비(archive)하고 새 금액의 계약을 만든다.
+  그래서 계약 ID 가 매번 바뀌고 원장에 변경 이력이 남는다.
+
+
+■ Transfer 는 지금 실패한다
+
+  아래 Transfer 는 컴파일은 되지만 실행하면 권한 오류가 난다.
+
+      signatory  = bank, owner
+      controller = owner
+      → 권한     = bank, owner
+
+      만들려는 계약의 signatory = bank, newOwner
+      → newOwner 의 권한이 없다
+
+  Deposit 은 owner 의 서명이 필요한 계약인데, 아직 아무 관계도 없는 newOwner 가
+  서명했을 리 없다. 남에게 원치 않는 채권·채무를 떠넘길 수 없다는 뜻이고,
+  이것은 버그가 아니라 Daml 이 의도한 안전장치다.
+
+  해결은 Step 04 의 propose/accept 다.
+
+================================================================================
+-}
+
+module Step03.Deposit where
+
+template Deposit
+  with
+    bank : Party
+    owner : Party
+    amount : Decimal
+  where
+    signatory bank, owner
+
+    ensure amount > 0.0
+
+    nonconsuming choice ShowBalance : Decimal
+      controller owner
+      do
+        pure amount
+
+    choice Withdraw : Optional (ContractId Deposit)
+      with
+        requested : Decimal
+      controller owner
+      do
+        assertMsg "인출액은 0보다 커야 합니다" (requested > 0.0)
+        assertMsg "잔액이 부족합니다" (requested <= amount)
+        if requested == amount
+          then pure None
+          else do
+            cid <- create this with amount = amount - requested
+            pure (Some cid)
+
+    choice AddInterest : ContractId Deposit
+      with
+        rate : Decimal
+      controller bank
+      do
+        assertMsg "이율은 0보다 커야 합니다" (rate > 0.0)
+        create this with amount = amount + amount * rate
+
+    choice Transfer : ContractId Deposit
+      with
+        newOwner : Party
+      controller owner
+      do
+        create this with owner = newOwner
