@@ -1,0 +1,10 @@
+.daml/
+.dars/
+*.dar
+.omc/
+canton-log/
+log/
+*.log
+.vscode/
+env.sh
+archive/
