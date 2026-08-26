@@ -9,7 +9,7 @@ Step 을 순서대로 거치면서 그 목표에 도달한다.
 | Step | 문서 | 다루는 것 | 상태 |
 | --- | --- | --- | --- |
 | 01 | [용어](steps/Step01Terminology.md) | Canton 의 모든 기본 용어. 시나리오 서술 + 용어표. 코드 없음 | ✅ |
-| 02 | 환경 세팅 | Participant 기동, party·user 생성, HTTP 로 계약 생성·조회 | 예정 |
+| 02 | [환경 세팅](steps/Step02Environment.md) | Participant 기동, party·user 생성, HTTP 로 계약 생성·조회. 인터랙티브 러너 | ✅ |
 | 03 | 첫 계약 | Daml 문법. template / signatory / choice | 예정 |
 | 04 | 두 당사자 | Propose-accept. 다중 signatory 의 권한 결합 | 예정 |
 | 05 | 다중 participant | `canton.conf` 로 노드 2개 + synchronizer. 신뢰 경계·vetting·토폴로지 | 예정 |
@@ -89,7 +89,7 @@ daml studio         # VS Code + Daml 확장
 ## 파일 구조
 
 ```
-steps/            학습 문서 (산문)
+steps/            학습 문서 + 인터랙티브 러너 스크립트
 daml/             Daml 소스 — daml.yaml 의 source 루트
 env.sh            로컬 환경 (gitignore)
 ```
