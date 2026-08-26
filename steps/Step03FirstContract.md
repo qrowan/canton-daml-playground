@@ -27,8 +27,8 @@ Sandbox 를 띄우지 않는다. `daml test` 의 인메모리 엔진으로 빠�
 | `daml/Step03/Deposit.daml` | 템플릿. Step 02 의 것에 choice 4개를 더한 것 |
 | `daml/Step03/DepositTest.daml` | Daml Script 테스트 11개 |
 
-Step 02 의 `daml/Step02/Deposit.daml` 은 그대로 두고 새 모듈을 만들었다. 각 Step 의
-코드가 그 시점 상태로 고정되어야 이전 Step 을 다시 실행할 수 있다.
+Step 02 의 `daml/Step02/Deposit.daml` 은 그대로 있다. Step 02 러너를 다시 실행해도
+동작한다.
 
 ## Step 02 에서 무엇이 늘었는가
 

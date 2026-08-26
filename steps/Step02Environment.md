@@ -49,8 +49,7 @@ Alice 와 David 는 **같은 은행의 고객이고 같은 노드에 있다.** �
 ## 사용하는 템플릿
 
 `daml/Step02/Deposit.daml`. 문법은 Step 03 에서 다루고, 여기서는 원장 동작을 보기
-위한 최소 재료로만 쓴다. **이 파일은 Step 02 시점의 상태로 고정되어 있고 이후 Step 이
-수정하지 않는다.**
+위한 최소 재료로만 쓴다.
 
 ```daml
 template Deposit

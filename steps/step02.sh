@@ -351,7 +351,7 @@ say "  3. 앞의 64자 해시 — 어떤 코드로 검증했는지가 에러에 
 title "확인한 것"
 cat <<SUMMARY
 
-  Participant node   sandbox 하나가 participant + sequencer + mediator
+  Participant node   테스트를 위한 sandbox 환경에서는 participant + sequencer + mediator 함께 실행
   Party              Citi / Alice / David. :: 뒷부분이 발급 키의 지문
   Hosted party       셋 다 같은 지문 → participant 가 발급 → 자기 키 없음
   User               citi-settlement 하나가 두 party 를 대리 (N:M)
