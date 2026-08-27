@@ -23,17 +23,68 @@ Bob 에게 이체하고, Bob 이 Goldman Sachs 의 채권과 교환한다.** 등
 
 ## 사전 준비
 
-| 필요한 것 | 확인 | 설치 |
-| --- | --- | --- |
-| **DPM** — Daml/Canton 공식 CLI | `dpm version` | [설치 문서](https://docs.canton.network/sdks-tools/cli-tools/dpm) |
-| **JDK 21 이상** | `java -version` | 배포판은 자유 (Temurin, Zulu, Corretto, OpenJDK …) |
+필요한 것은 두 개다. **DPM**(Daml/Canton 공식 CLI)과 **JDK 21 이상**.
 
-둘 다 동작하면 준비 끝이다. 설치 위치나 방법은 상관없다.
+아래는 macOS 기준 명령이다. 다른 OS 이거나 다른 방법을 쓰고 싶으면 공식 문서를 볼 것 —
+[DPM 설치](https://docs.canton.network/sdks-tools/cli-tools/dpm).
 
-저장소 루트에서 SDK 를 받는다. 버전은 `daml.yaml` 이 정한다.
+### 1. DPM
+
+```sh
+curl https://get.digitalasset.com/install/install.sh | sh
+```
+
+### 2. JDK 21
+
+배포판은 자유다. Homebrew 를 쓴다면:
+
+```sh
+brew install openjdk@21
+```
+
+### 3. PATH 등록
+
+**둘 다 설치만으로는 셸에서 잡히지 않는다.** DPM 은 `~/.dpm/bin` 에 들어가고,
+Homebrew 의 `openjdk@21` 은 keg-only 라 시스템 JDK 로 등록되지 않는다.
+
+```sh
+cat >> ~/.zshrc <<'EOF'
+export JAVA_HOME="$(brew --prefix openjdk@21)"
+export PATH="$JAVA_HOME/bin:$HOME/.dpm/bin:$PATH"
+EOF
+source ~/.zshrc
+```
+
+### 4. 확인
+
+```sh
+dpm version
+```
+
+```
+ * 3.5.5
+```
+
+```sh
+java -version
+```
+
+```
+openjdk version "21.0.12.1" ...
+```
+
+`command not found` 나 `Unable to locate a Java Runtime` 이 나오면 3번을 다시 볼 것.
+
+### 5. SDK 설치
+
+저장소 루트에서. 버전은 `daml.yaml` 이 정한다.
 
 ```sh
 dpm install
+```
+
+```
+Successfully installed SDK 3.5.5
 ```
 
 ## 시작
