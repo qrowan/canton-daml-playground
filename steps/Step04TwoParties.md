@@ -1,10 +1,10 @@
 # Step 04 — 두 당사자
 
-[Step 03](Step03FirstContract.md) 에서 `Transfer` 가 실패했다. 그리고 발행도 사실은
+[Step 03](Step03FirstContract.md) 에서 `Transfer` 가 실패했습니다. 그리고 발행도 사실은
 `submit [Citi, Alice]` 라는 편법에 기대고 있었다.
 
-두 문제의 원인은 같다. **한 트랜잭션에 두 party 의 권한이 필요한데, participant 는
-자기가 호스팅하는 party 의 권한만 행사할 수 있다.**
+두 문제의 원인은 같습니다. **한 트랜잭션에 두 party 의 권한이 필요한데, participant 는
+자기가 호스팅하는 party 의 권한만 행사할 수 있습니다.**
 
 해법은 권한을 두 트랜잭션으로 나누는 것 — **propose / accept** 다.
 
@@ -38,7 +38,7 @@
 | `observer` | 없음 | 제안 템플릿에 등장 |
 | `submit [a, b]` | 테스트에서 사용 | **하나도 없음** |
 
-`ShowBalance` / `Withdraw` / `AddInterest` 는 그대로 가져왔다.
+`ShowBalance` / `Withdraw` / `AddInterest` 는 그대로 가져왔습니다.
 
 ## 왜 `submit [a, b]` 가 편법인가
 
@@ -51,8 +51,8 @@
                → 어느 쪽도 두 권한을 동시에 갖지 못함
 ```
 
-Step 02 에서 통했던 이유는 sandbox 의 participant 가 하나였기 때문이다. Alice 가
-Bob 같은 타행 고객이었다면 그 코드는 실제 환경에서 동작하지 않는다.
+Step 02 에서 통했던 이유는 sandbox 의 participant 가 하나였기 때문입니다. Alice 가
+Bob 같은 타행 고객이었다면 그 코드는 실제 환경에서 동작하지 않습니다.
 
 ## 패턴
 
@@ -70,7 +70,7 @@ Bob 같은 타행 고객이었다면 그 코드는 실제 환경에서 동작하
           → 이 합쳐진 권한으로 목표 계약을 만든다
 ```
 
-두 시점에 나뉘어 있던 동의가 두 번째 트랜잭션에서 결합된다.
+두 시점에 나뉘어 있던 동의가 두 번째 트랜잭션에서 결합됩니다.
 
 ## 반드시 남아야 할 것
 
@@ -99,14 +99,14 @@ TX 2   Bob 이 AcceptTransfer 를 행사
 ```
 
 **TX 2 에서 Alice 의 권한이 어디서 왔는지 주목할 것.** Alice 는 그 트랜잭션을
-제출하지도 않았다. 제안 계약의 signatory 로 남아있던 Alice 의 동의가 그대로 실린 것이다.
+제출하지도 않았다. 제안 계약의 signatory 로 남아있던 Alice 의 동의가 그대로 실린 것입니다.
 
-이것이 propose/accept 가 작동하는 이유다 — **제안 계약이 제안자의 동의를 보관한다.**
+이것이 propose/accept 가 작동하는 이유다 — **제안 계약이 제안자의 동의를 보관합니다.**
 
 ### 3. observer 가 여기서 처음 필요해진다
 
-제안의 signatory 는 제안자뿐이다. 상대방은 서명하지 않았으므로 signatory 가 아니다.
-그런데 제안을 **볼 수 없으면 수락할 수도 없다.**
+제안의 signatory 는 제안자뿐입니다. 상대방은 서명하지 않았으므로 signatory 가 아닙니다.
+그런데 제안을 **볼 수 없으면 수락할 수도 없습니다.**
 
 ```daml
 template DepositProposal
@@ -120,13 +120,13 @@ template DepositProposal
       controller deposit.owner  -- 수락 권한은 여기서 온다
 ```
 
-**observer 와 controller 를 혼동하지 말 것.** observer 는 가시성만 준다. observer
+**observer 와 controller 를 혼동하지 말 것.** observer 는 가시성만 줍니다. observer
 라고 아무 choice 나 행사할 수 있는 게 아니고, 반대로 controller 는 observer 가
 아니어도 된다(다만 볼 수 없으면 실무적으로 행사가 어렵다).
 
-### 4. 거절과 철회는 반드시 되돌려야 한다
+### 4. 거절과 철회는 반드시 되돌려야 합니다
 
-`ProposeTransfer` 는 원본 `Deposit` 을 **소비한다.**
+`ProposeTransfer` 는 원본 `Deposit` 을 **소비합니다.**
 
 ```daml
 choice RejectTransfer : ContractId Deposit
@@ -135,16 +135,16 @@ choice RejectTransfer : ContractId Deposit
     create deposit          -- deposit.owner 는 원 소유자 그대로
 ```
 
-돌려주지 않으면 **예금이 사라진다.** 흔한 버그이며, `Reject` 를 `pure ()` 로 두면
-자산이 증발한다.
+돌려주지 않으면 **예금이 사라집니다.** 흔한 버그이며, `Reject` 를 `pure ()` 로 두면
+자산이 증발합니다.
 
 반면 발행 제안은 아무것도 소비하지 않았으므로 `RejectDeposit` 은 `pure ()` 가 맞다.
-되돌릴 것이 없다.
+되돌릴 것이 없습니다.
 
 **판별법**: 그 제안을 만들 때 무언가를 소비했는가? 소비했다면 거절 경로에서 반드시
-복구해야 한다.
+복구해야 합니다.
 
-### 5. 제안 구간에는 원본이 존재하지 않는다
+### 5. 제안 구간에는 원본이 존재하지 않습니다
 
 ```
 발행 후     Deposit{Alice, 100}                   활성 1건
@@ -156,11 +156,11 @@ choice RejectTransfer : ContractId Deposit
             TransferProposal 은 소비됨
 ```
 
-중간 상태에서 **Alice 의 예금 조회 결과가 빈 배열이다.** `testProposalConsumesDeposit`
-이 이것을 확인한다.
+중간 상태에서 **Alice 의 예금 조회 결과가 빈 배열입니다.** `testProposalConsumesDeposit`
+이 이것을 확인합니다.
 
-실무 함의: 이 구간을 사용자에게 "이체 대기중"으로 보여줘야 한다. 잔액이 0 으로 보이면
-안 된다. 애플리케이션은 `Deposit` 뿐 아니라 `TransferProposal` 도 함께 조회해야 한다.
+실무 함의: 이 구간을 사용자에게 "이체 대기중"으로 보여줘야 합니다. 잔액이 0 으로 보이면
+안 됩니다. 애플리케이션은 `Deposit` 뿐 아니라 `TransferProposal` 도 함께 조회해야 합니다.
 
 ## 테스트 12개
 
@@ -192,17 +192,17 @@ template TransferProposal
 ```
 
 금액과 은행을 따로 복사하지 않고 통째로 들고 있으면, 수락 시
-`create deposit with owner = newOwner` 한 줄로 끝난다. `Deposit` 에 필드가 늘어도
-제안 템플릿을 고칠 필요가 없다.
+`create deposit with owner = newOwner` 한 줄로 끝납니다. `Deposit` 에 필드가 늘어도
+제안 템플릿을 고칠 필요가 없습니다.
 
-signatory 도 `deposit.bank, deposit.owner` 로 참조한다.
+signatory 도 `deposit.bank, deposit.owner` 로 참조합니다.
 
 ## 남은 문제
 
-지금까지는 전부 participant 하나에서 확인했다. **"노드가 분리돼도 동작한다"는 아직
-말뿐이다.**
+지금까지는 전부 participant 하나에서 확인했습니다. **"노드가 분리돼도 동작한다"는 아직
+말뿐입니다.**
 
 ---
 
 다음: **[Step 05 — 다중 Participant](Step05MultiParticipant.md).** 노드를 직접 띄우고
-Alice 와 Bob 을 서로 다른 Participant 에 두어 실제로 확인한다.
+Alice 와 Bob 을 서로 다른 Participant 에 두어 실제로 확인합니다.
