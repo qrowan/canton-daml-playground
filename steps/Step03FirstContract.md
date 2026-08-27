@@ -2,7 +2,7 @@
 
 [Step 02](Step02Environment.md) 는 원장을 관찰했다. 여기서는 **코드를 쓴다.**
 
-Daml 문법과 권한 계산 규칙을 익히고, `daml test` 로 검증하는 개발 루프를 만든다.
+Daml 문법과 권한 계산 규칙을 익히고, `dpm test` 로 검증하는 개발 루프를 만든다.
 그리고 예금 이체가 왜 아직 불가능한지 확인한다.
 
 ## 실행
@@ -13,7 +13,7 @@ Daml 문법과 권한 계산 규칙을 익히고, `daml test` 로 검증하는 �
 ./steps/step03.sh
 ```
 
-Sandbox 를 띄우지 않는다. `daml test` 의 인메모리 엔진으로 빠르게 돈다.
+Sandbox 를 띄우지 않는다. `dpm test` 의 인메모리 엔진으로 빠르게 돈다.
 
 | 옵션 | 용도 |
 | --- | --- |
@@ -140,18 +140,18 @@ Bob 이 서명했을 리 없다. 남에게 원치 않는 채권·채무를 떠�
 
 해결은 Step 04 의 propose/accept 다.
 
-### 4. daml test 는 Canton 이 아니다
+### 4. dpm test 는 Canton 이 아니다
 
 인메모리 엔진으로 스크립트를 실행한다. Sequencer·Mediator·확인 프로토콜이 없다.
 
-| | `daml test` | Step 02 의 러너 |
+| | `dpm test` | Step 02 의 러너 |
 | --- | --- | --- |
 | 속도 | 빠름 (초 단위) | 느림 (기동 포함) |
 | 검증하는 것 | Daml 로직·권한 모델 | 실제 원장 동작 |
 | party 관리 | `allocateParty` 로 매번 새로 | 영속 (재기동 전까지) |
 | 다중 party 제출 | `submit [Citi, Alice]` 가 항상 통함 | participant 가 둘 다 호스팅할 때만 |
 
-로직은 `daml test` 로 빠르게, 원장 동작은 러너로 확인한다.
+로직은 `dpm test` 로 빠르게, 원장 동작은 러너로 확인한다.
 
 `submit [Citi, Alice]` 는 테스트 전용으로 볼 것. 노드가 다르면 불가능하고, 그때
 필요한 것이 Step 04 다.
@@ -185,7 +185,7 @@ Bob 이 서명했을 리 없다. 남에게 원치 않는 채권·채무를 떠�
 
 ## 직접 해보기
 
-1. `Withdraw` 의 `assertMsg` 를 지우고 `daml test` 를 다시 돌려 본다.
+1. `Withdraw` 의 `assertMsg` 를 지우고 `dpm test` 를 다시 돌려 본다.
    `testWithdrawTooMuch` 가 실패한다. 왜?
 
 2. `AddInterest` 의 `controller` 를 `owner` 로 바꿔 본다.

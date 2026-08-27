@@ -82,12 +82,12 @@ BANNER
 printf '%s\n' "$R"
 
 if [ ! -f ./env.sh ]; then
-  die "env.sh 가 없습니다. README 의 '세팅' 절을 먼저 진행하세요."
+  die "env.sh 가 없습니다. README 의 '시작하기' 를 먼저 진행하세요."
 fi
 # shellcheck disable=SC1091
 source ./env.sh
 
-command -v daml >/dev/null 2>&1 || die "daml 을 찾을 수 없습니다. env.sh 를 확인하세요."
+command -v dpm >/dev/null 2>&1 || die "dpm 을 찾을 수 없습니다. README 의 '시작하기' 를 먼저 진행하세요."
 
 API="http://localhost:7575"
 LAPI_PORT=6865
@@ -117,7 +117,7 @@ say "DAR 은 Java 의 .jar 에 해당하는 배포 단위이고, 안에 컴파�
 say "원본 소스가 함께 들어 있다."
 pause
 
-run "daml build --no-legacy-assistant-warning 2>&1 | grep -E 'error|Created'" || die "빌드 실패"
+run "dpm build 2>&1 | grep -E 'error|Created'" || die "빌드 실패"
 
 DAR=$(ls -t .daml/dist/*.dar 2>/dev/null | head -1)
 [ -n "$DAR" ] || die "DAR 을 찾을 수 없습니다"
@@ -138,16 +138,16 @@ note "원본 소스도 들어 있다 — 상대가 준 DAR 을 감사할 수 있
 # ─── 3. sandbox 기동 ─────────────────────────────────────────────────────────
 
 title "빈 Canton 원장 기동"
-say "daml sandbox 는 participant + sequencer + mediator 를 한 JVM 에 띄운다."
-say "daml start 와 달리 init-script 를 실행하지 않으므로 party 가 하나도 없다."
+say "dpm sandbox 는 participant + sequencer + mediator 를 한 JVM 에 띄운다."
+say "daml.yaml 의 init-script 를 실행하지 않으므로 party 가 하나도 없다."
 say ""
 note "이 러너는 sandbox 를 백그라운드로 띄우고 로그를 .step02/sandbox.log 에 남긴다."
-note "직접 띄우려면: daml sandbox --json-api-port 7575 --dar $DAR"
+note "직접 띄우려면: dpm sandbox --json-api-port 7575 --dar $DAR"
 pause
 
 pkill -f canton 2>/dev/null || true
 sleep 1
-nohup daml sandbox --no-legacy-assistant-warning --json-api-port 7575 --dar "$DAR" > "$LOG" 2>&1 &
+nohup dpm sandbox --json-api-port 7575 --dar "$DAR" > "$LOG" 2>&1 &
 SANDBOX_PID=$!
 
 printf '기동 대기'
@@ -262,11 +262,11 @@ say "트랜잭션은 template 을 package-id 로 지목한다. 코드가 1바이
 say "해시가 달라지므로 누가 몰래 다른 로직으로 바꿔치기할 수 없다."
 pause
 
-export PKG=$(daml damlc inspect-dar "$DAR" 2>/dev/null | grep -oE "[0-9a-f]{64}" | head -1)
+export PKG=$(dpm inspect-dar "$DAR" 2>/dev/null | grep -oE "[0-9a-f]{64}" | head -1)
 ok "PKG = $PKG"
 printf '\n'
-say "원장에 업로드·vetting 된 것과 같은지 대조한다."
-run "daml packages list --host localhost --port $LAPI_PORT --no-legacy-assistant-warning 2>/dev/null | grep \$(basename \$(pwd))"
+say "원장에 업로드·vetting 된 것과 같은지 JSON API 로 대조한다."
+run "curl -s \$API/v2/packages | grep -c $PKG"
 note "일치한다. vetting 은 participant 가 '이 package-id 를 쓰겠다'고 공표하는 것이고,"
 note "--dar 로 넘겼으므로 sandbox 가 업로드와 vetting 을 함께 처리했다."
 

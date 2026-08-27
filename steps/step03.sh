@@ -4,7 +4,7 @@
 #   ./steps/step03.sh            처음부터
 #   ./steps/step03.sh --auto     엔터 대기 없이 전부 실행
 #
-# Sandbox 를 띄우지 않는다. daml test 의 인메모리 엔진으로 빠르게 돈다.
+# Sandbox 를 띄우지 않는다. dpm test 의 인메모리 엔진으로 빠르게 돈다.
 
 set -uo pipefail
 
@@ -78,17 +78,17 @@ printf '%s\n' "$B"
 cat <<'BANNER'
  Step 03 — 첫 계약
  ────────────────────────────────────────────────────────────
- Deposit 템플릿에 choice 를 추가하고, daml test 로 검증한다.
+ Deposit 템플릿에 choice 를 추가하고, dpm test 로 검증한다.
  Daml 문법과 권한 계산 규칙을 코드로 익힌다.
 
  Step 02 는 원장을 관찰했다. 여기서는 코드를 쓴다.
 BANNER
 printf '%s\n' "$R"
 
-[ -f ./env.sh ] || die "env.sh 가 없습니다. README 의 '세팅' 절을 먼저 진행하세요."
+[ -f ./env.sh ] || die "env.sh 가 없습니다. README 의 '시작하기' 를 먼저 진행하세요."
 # shellcheck disable=SC1091
 source ./env.sh
-command -v daml >/dev/null 2>&1 || die "daml 을 찾을 수 없습니다."
+command -v dpm >/dev/null 2>&1 || die "dpm 을 찾을 수 없습니다. README 의 '시작하기' 를 먼저 진행하세요."
 mkdir -p "$ROOT/.step03"
 
 # ─── 1 ───────────────────────────────────────────────────────────────────────
@@ -199,7 +199,7 @@ note "현실의 계약과 같다. 약관에 서명하면 그 조항이 발동할
 # ─── 6 ───────────────────────────────────────────────────────────────────────
 
 title "테스트 — Daml Script"
-say "daml test 는 인메모리 엔진으로 스크립트를 실행한다."
+say "dpm test 는 인메모리 엔진으로 스크립트를 실행한다."
 say "빠르지만 Canton 이 아니다. Sequencer·Mediator·확인 프로토콜이 없다."
 printf '\n'
 say "로직 검증은 여기서 빠르게, 원장 동작 확인은 Step 02 의 러너로."
@@ -217,8 +217,8 @@ title "실행"
 say "전체 테스트를 돌린다."
 pause
 
-printf '%s$ daml test%s\n\n' "$YE" "$R"
-daml test --no-legacy-assistant-warning > "$OUT" 2>&1
+printf '%s$ dpm test%s\n\n' "$YE" "$R"
+dpm test > "$OUT" 2>&1
 TEST_EXIT=$?
 
 PASSED=$(grep -c ': ok,' "$OUT" 2>/dev/null || echo 0)
@@ -283,7 +283,7 @@ note "넘길 수는 없다."
 title "직접 해보기"
 cat <<'TRY'
 
-  1. Withdraw 의 assertMsg 를 지우고 daml test 를 다시 돌려 본다.
+  1. Withdraw 의 assertMsg 를 지우고 dpm test 를 다시 돌려 본다.
      testWithdrawTooMuch 가 실패한다. 왜?
 
   2. AddInterest 의 controller 를 owner 로 바꿔 본다.
@@ -315,7 +315,7 @@ cat <<SUMMARY
   권한 계산          [계약의 signatory] + [choice 의 controller]
   서명의 의미        template 의 모든 choice 에 미리 동의하는 것
   계약 불변성        수정이 아니라 archive + create. 계약 ID 가 바뀐다
-  daml test         인메모리 개발 루프. Canton 이 아니다
+  dpm test         인메모리 개발 루프. Canton 이 아니다
 
   ${B}남은 문제${R}  Transfer 가 실패한다. 새 owner 의 권한을 어떻게 얻는가?
 

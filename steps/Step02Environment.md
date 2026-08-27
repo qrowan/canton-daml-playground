@@ -4,7 +4,7 @@
 Canton 원장을 띄우고, party 와 user 를 만들고, HTTP 로 계약을 생성해 프라이버시와
 권한 검사를 관찰한다.
 
-Daml Script(`daml test`)를 거치지 않고 **실제 애플리케이션이 쓰는 경로**로만 진행한다.
+Daml Script(`dpm test`)를 거치지 않고 **실제 애플리케이션이 쓰는 경로**로만 진행한다.
 
 ## 실행
 

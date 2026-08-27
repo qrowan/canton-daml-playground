@@ -4,7 +4,7 @@
 #   ./steps/step04.sh            처음부터
 #   ./steps/step04.sh --auto     엔터 대기 없이 전부 실행
 #
-# Sandbox 를 띄우지 않는다. daml test 의 인메모리 엔진으로 진행한다.
+# Sandbox 를 띄우지 않는다. dpm test 의 인메모리 엔진으로 진행한다.
 
 set -uo pipefail
 
@@ -86,10 +86,10 @@ cat <<'BANNER'
 BANNER
 printf '%s\n' "$R"
 
-[ -f ./env.sh ] || die "env.sh 가 없습니다. README 의 '세팅' 절을 먼저 진행하세요."
+[ -f ./env.sh ] || die "env.sh 가 없습니다. README 의 '시작하기' 를 먼저 진행하세요."
 # shellcheck disable=SC1091
 source ./env.sh
-command -v daml >/dev/null 2>&1 || die "daml 을 찾을 수 없습니다."
+command -v dpm >/dev/null 2>&1 || die "dpm 을 찾을 수 없습니다. README 의 '시작하기' 를 먼저 진행하세요."
 mkdir -p "$ROOT/.step04"
 
 # ─── 1 ───────────────────────────────────────────────────────────────────────
@@ -245,8 +245,8 @@ note "issue 헬퍼가 TX 1 과 TX 2 를 각각 다른 party 로 제출하는 것
 title "실행"
 pause
 
-printf '%s$ daml test%s\n\n' "$YE" "$R"
-daml test --no-legacy-assistant-warning > "$OUT" 2>&1
+printf '%s$ dpm test%s\n\n' "$YE" "$R"
+dpm test > "$OUT" 2>&1
 TEST_EXIT=$?
 [ "$TEST_EXIT" = 0 ] || { tail -30 "$OUT"; die "테스트 실패"; }
 

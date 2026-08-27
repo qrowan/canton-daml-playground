@@ -25,26 +25,19 @@ brew install openjdk@21
 
 ### 2. SDK
 
-Digital Asset 은 3.4.x 부터 **DPM(Digital Asset Package Manager)** 을 공식 CLI 로 삼고
-있다. `dpm build` / `dpm test` / `dpm sandbox` 가 각각 `daml build` / `daml test` /
-`daml sandbox` 를 대체한다.
+Digital Asset 의 공식 CLI 는 **DPM(Digital Asset Package Manager)** 이다. 3.4.x 부터
+`daml` 어시스턴트를 대체했고, arm64 네이티브 빌드를 제공하므로 Rosetta 가 필요 없다.
 
 ```sh
 curl https://get.digitalasset.com/install/install.sh | sh
 ```
 
+SDK 를 설치한다. 버전은 `daml.yaml` 의 `sdk-version` 을 따른다.
+
 ```sh
 export PATH="${HOME}/.dpm/bin:${PATH}"
+dpm install
 ```
-
-**단, 이 저장소의 러너 스크립트는 아직 `daml` 어시스턴트를 호출한다.** 러너를 그대로
-돌리려면 아래로 3.4.11 을 설치할 것.
-
-```sh
-curl -sSL -o /tmp/daml-sdk.tar.gz https://github.com/digital-asset/daml/releases/download/v3.4.11/daml-sdk-3.4.11-macos-x86_64.tar.gz && tar xzf /tmp/daml-sdk.tar.gz -C /tmp && /tmp/sdk-3.4.11/install.sh
-```
-
-`daml` 어시스턴트는 3.5 에서 제거될 예정이므로, 이 저장소도 DPM 으로 옮겨야 한다.
 
 ### 3. 환경 스크립트
 
@@ -53,7 +46,7 @@ curl -sSL -o /tmp/daml-sdk.tar.gz https://github.com/digital-asset/daml/releases
 ```sh
 cat > env.sh <<'EOF'
 export JAVA_HOME="/opt/homebrew/opt/openjdk@21"
-export PATH="$JAVA_HOME/bin:$HOME/.daml/bin:$PATH"
+export PATH="$JAVA_HOME/bin:$HOME/.dpm/bin:$PATH"
 EOF
 ```
 
@@ -103,15 +96,14 @@ Bob 에게 이체한다.** 등장 인물은 Step 01 에 정의되어 있다.
 
 | 항목 | 값 |
 | --- | --- |
-| 이 저장소가 쓰는 SDK | 3.4.11 (Canton 3.x, LF 2.1) |
-| 최신 릴리스 | `curl -sS https://get.digitalasset.com/install/latest` 로 확인 |
-| 설치 위치 | `~/.daml` (DPM 은 `~/.dpm`) |
+| SDK | 3.5.5 (Canton 3.5.12, LF 2.1) |
+| CLI | DPM — `~/.dpm` |
+| 최신 릴리스 확인 | `curl -sS https://get.digitalasset.com/install/latest` |
 | JVM | OpenJDK 21 (Homebrew keg-only) |
 
 ### 알아둘 것
 
-- **macOS Apple Silicon**: Daml SDK 는 macOS x86_64 빌드만 배포되므로 Rosetta 를 경유해 실행된다. 동작에는 문제없다.
-- **Daml Assistant 는 deprecated**: 3.5 에서 제거되고 [DPM](https://docs.canton.network/sdks-tools/cli-tools/dpm) 으로 대체된다. DPM 은 arm64 네이티브 빌드를 제공한다.
+- **`daml` 어시스턴트는 쓰지 않는다.** 3.5 에서 제거되었고 [DPM](https://docs.canton.network/sdks-tools/cli-tools/dpm) 이 대체한다. 이 저장소는 `dpm` 만 쓴다.
 - **Daml 3 에는 contract key 가 없다**: 2.x 튜토리얼의 `key` / `maintainer` / `fetchByKey` 는 컴파일되지 않는다.
 - **코드를 바꿨으면 `daml.yaml` 의 `version` 을 올려야** 원장에 재업로드된다. Package ID 는 내용 해시라서 버전이 같으면 충돌한다.
 - **Sandbox 는 인메모리다.** 종료하면 Party·User·Contract 뿐 아니라 Participant 의 키까지 사라지고, 재기동하면 Party ID 의 namespace 지문이 바뀐다.
@@ -119,15 +111,15 @@ Bob 에게 이체한다.** 등장 인물은 Step 01 에 정의되어 있다.
 ## 명령어
 
 ```sh
-daml build          # DAR 컴파일 → .daml/dist/
-daml test           # Daml Script 테스트 + Choice 커버리지
-daml sandbox        # 빈 Canton 원장
-daml canton-console # Canton 운영 콘솔
-daml studio         # VS Code + Daml 확장
+dpm build          # DAR 컴파일 → .daml/dist/
+dpm test           # Daml Script 테스트 + Choice 커버리지
+dpm sandbox        # 빈 Canton 원장
+dpm canton-console # Canton 운영 콘솔
+dpm studio         # VS Code + Daml 확장
 ```
 
-`daml test` 는 인메모리 엔진이고 Canton 이 아니다. Sequencer·Mediator·확인 프로토콜이
-없다. 로직 검증은 `daml test`, 원장 동작 확인은 `daml sandbox` 로 한다.
+`dpm test` 는 인메모리 엔진이고 Canton 이 아니다. Sequencer·Mediator·확인 프로토콜이
+없다. 로직 검증은 `dpm test`, 원장 동작 확인은 `dpm sandbox` 로 한다.
 
 ## 파일 구조
 
