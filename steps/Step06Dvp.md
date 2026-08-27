@@ -185,26 +185,6 @@ Alice 의 현금은 `Settle` 시점에 인자로 지정됩니다. 그 사이 Ali
 `connect_local` 과 `parties.enable` 을 추가하면 됩니다. 권한 모델이 이미 맞으므로
 **Daml 코드는 고칠 것이 없습니다.**
 
-## 직접 해보기
-
-1. `CashTransfer` 의 controller 를 `owner` 만으로 되돌립니다.
-   `Settle` 이 어떻게 깨지는가? 에러가 무엇을 요구하는가?
-
-2. `Settle` 에서 현금 다리를 exercise 대신 직접 create 로 바꿉니다.
-   ```daml
-   create cash with owner = bond.owner
-   ```
-   왜 실패하는가? 권한 계산을 직접 해볼 것.
-
-3. 금액 검사를 `==` 에서 `>=` 로 바꿉니다.
-   `testWrongAmountFails` 는 통과하지만 새 문제가 생깁니다. 거스름돈은?
-
-4. `DvpProposal` 에서 `observer buyer` 를 지웁니다.
-   Alice 가 `Settle` 을 행사할 수 있는가?
-
-5. `ProposeDvp` 를 `nonconsuming` 으로 바꿉니다.
-   `testCannotDoubleSell` 이 어떻게 되는가?
-
 ---
 
 다음: **Step 07 — 공시와 감사.** Observer 로 감독기관에 거래를 공시하고, 누가 무엇을

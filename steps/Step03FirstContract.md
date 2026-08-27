@@ -183,26 +183,6 @@ Bob 이 서명했을 리 없다. 남에게 원치 않는 채권·채무를 떠�
 `Transfer` 는 `submitMustFail` 로만 호출되므로 "행사됨"으로 세지 않는다 — 실제로
 성공한 적이 없기 때문이다. `Archive` 는 이 테스트에서 직접 부르지 않았다.
 
-## 직접 해보기
-
-1. `Withdraw` 의 `assertMsg` 를 지우고 `dpm test` 를 다시 돌려 본다.
-   `testWithdrawTooMuch` 가 실패한다. 왜?
-
-2. `AddInterest` 의 `controller` 를 `owner` 로 바꿔 본다.
-   `testBankAddsInterest` 와 `testOwnerCannotAddInterest` 중 무엇이 깨지는가?
-
-3. `ensure` 줄을 지우고 `testEnsureRejectsZero` 를 돌려 본다.
-
-4. `ShowBalance` 에서 `nonconsuming` 을 떼어 본다.
-   `testShowBalance` 의 `isSome` 단정이 왜 깨지는가?
-
-5. `Transfer` 의 controller 를 `controller owner, newOwner` 로 바꿔 본다.
-   `testTransferFails` 가 통과하지 않게 된다. **이것이 옳은 해결인가?**
-   (힌트: 그러면 그 트랜잭션을 누가 제출해야 하는가. Alice 와 Bob 이 서로 다른
-   participant 에 있다면?)
-
-5번이 Step 04 로 이어지는 질문이다.
-
 ---
 
 다음: **[Step 04 — 두 당사자](Step04TwoParties.md).** propose/accept 로 두 시점에

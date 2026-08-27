@@ -197,23 +197,6 @@ template TransferProposal
 
 signatory 도 `deposit.bank, deposit.owner` 로 참조한다.
 
-## 직접 해보기
-
-1. `RejectTransfer` 의 본문을 `pure ()` 로 바꾸고 반환 타입을 `()` 로 맞춘다.
-   `testRejectReturnsDeposit` 이 어떻게 깨지는가? 예금은 어디로 갔는가?
-
-2. `DepositProposal` 의 `observer` 줄을 지운다.
-   `testIssueViaProposal` 이 실패한다. 에러 메시지가 무엇을 말하는가?
-
-3. `AcceptTransfer` 의 controller 를 `deposit.owner` 로 바꾼다.
-   Alice 혼자 Bob 에게 예금을 떠넘길 수 있게 되는가? 왜 안 되는가?
-
-4. `TransferProposal` 의 signatory 에서 `deposit.owner` 를 뺀다.
-   TX 2 의 권한 계산이 어떻게 달라지는가?
-
-5. `CancelTransfer` 의 controller 를 `newOwner` 로 바꾼다.
-   그러면 누가 제안을 철회할 수 있게 되는가? 그것이 옳은가?
-
 ## 남은 문제
 
 지금까지는 전부 participant 하나에서 확인했다. **"노드가 분리돼도 동작한다"는 아직
