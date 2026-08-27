@@ -4,7 +4,7 @@
 #   ./steps/step03.sh            처음부터
 #   ./steps/step03.sh --auto     엔터 대기 없이 전부 실행
 #
-# Sandbox 를 띄우지 않는다. dpm test 의 인메모리 엔진으로 빠르게 돈다.
+# Sandbox 를 띄우지 않습니다. dpm test 의 인메모리 엔진으로 빠르게 돕니다.
 
 set -uo pipefail
 
@@ -62,7 +62,7 @@ show() {
   sed -n "${start},$((start + n - 1))p" "$f" | sed 's/^/    /'
 }
 
-# 테스트 결과에서 한 스크립트의 상태를 뽑는다
+# 테스트 결과에서 한 스크립트의 상태를 뽑습니다
 result() {
   local name="$1"
   local line
@@ -78,14 +78,14 @@ printf '%s\n' "$B"
 cat <<'BANNER'
  Step 03 — 첫 계약
  ────────────────────────────────────────────────────────────
- Deposit 템플릿에 choice 를 추가하고, dpm test 로 검증한다.
+ Deposit 템플릿에 choice 를 추가하고, dpm test 로 검증합니다.
  Daml 문법과 권한 계산 규칙을 코드로 익힌다.
 
- Step 02 는 원장을 관찰했다. 여기서는 코드를 쓴다.
+ Step 02 는 원장을 관찰했습니다. 여기서는 코드를 씁니다.
 BANNER
 printf '%s\n' "$R"
 
-# env.sh 가 있으면 읽는다. 없어도 된다 — PATH 에 dpm 과 java 만 있으면 동작한다.
+# env.sh 가 있으면 읽는다. 없어도 된다 — PATH 에 dpm 과 java 만 있으면 동작합니다.
 # shellcheck disable=SC1091
 [ -f ./env.sh ] && source ./env.sh
 
@@ -99,23 +99,23 @@ mkdir -p "$ROOT/.step03"
 # ─── 1 ────────────────────────────────────────────────────────────────
 
 title "template — 계약의 설계도"
-say "필드는 with 블록, 규칙은 where 블록에 쓴다."
+say "필드는 with 블록, 규칙은 where 블록에 씁니다."
 pause
 
 show "$SRC" "^template Deposit" 9
 
 printf '\n'
-say "${B}signatory bank, owner${R} — 둘 다 동의해야 성립한다."
-say "Step 02 에서 Citi 권한만으로 제출했을 때 거부된 이유가 이 한 줄이다."
+say "${B}signatory bank, owner${R} — 둘 다 동의해야 성립합니다."
+say "Step 02 에서 Citi 권한만으로 제출했을 때 거부된 이유가 이 한 줄입니다."
 printf '\n'
 say "${B}ensure amount > 0.0${R} — 원장에 기록되기 전 항상 검사되는 불변식."
-note "template 에 선언되지 않은 것은 존재하지 않는다. onlyOwner 로 막는 게 아니라"
-note "애초에 그런 행위가 없다."
+note "template 에 선언되지 않은 것은 존재하지 않습니다. onlyOwner 로 막는 게 아니라"
+note "애초에 그런 행위가 없습니다."
 
 # ─── 2 ────────────────────────────────────────────────────────────────
 
 title "choice — 계약에 할 수 있는 일"
-say "계약의 상태를 바꾸는 유일한 수단이다."
+say "계약의 상태를 바꾸는 유일한 수단입니다."
 pause
 
 show "$SRC" "choice Withdraw" 13
@@ -133,39 +133,39 @@ cat <<'SYNTAX'
 
 SYNTAX
 say "${B}controller 는 signatory 와 별개다.${R} signatory 가 아닌 party 도"
-say "controller 가 될 수 있다. Step 04 에서 그 형태가 나온다."
+say "controller 가 될 수 있습니다. Step 04 에서 그 형태가 나옵니다."
 
 # ─── 3 ────────────────────────────────────────────────────────────────
 
-title "계약은 수정되지 않는다"
+title "계약은 수정되지 않습니다"
 say "Withdraw 는 amount 필드를 줄이는 것처럼 보이지만 그렇지 않다."
-say "기존 계약을 소비(archive)하고 새 금액의 계약을 만든다."
+say "기존 계약을 소비(archive)하고 새 금액의 계약을 만듭니다."
 pause
 
 cat <<'DIAGRAM'
     Solidity     deposit.amount -= 30       주소 그대로, 값만 변경
 
     Daml         archive(cid1)              cid1 은 무효가 되고
-                 create Deposit{70.0}       cid2 가 새로 생긴다
+                 create Deposit{70.0}       cid2 가 새로 생깁니다
                  ← 하나의 원자적 트랜잭션
 
 DIAGRAM
-say "그래서 계약 ID 가 매번 바뀌고, 원장에 모든 변경 이력이 남는다."
-note "실무 함의: 계약 ID 를 외부 시스템에 저장해두면 곧 무효가 된다."
-note "조회는 query 로 다시 하는 것이 원칙이다."
+say "그래서 계약 ID 가 매번 바뀌고, 원장에 모든 변경 이력이 남습니다."
+note "실무 함의: 계약 ID 를 외부 시스템에 저장해두면 곧 무효가 됩니다."
+note "조회는 query 로 다시 하는 것이 원칙입니다."
 
 # ─── 4 ────────────────────────────────────────────────────────────────
 
 title "consuming 과 nonconsuming"
-say "choice 는 기본이 consuming 이다. 행사되면 계약이 사라진다."
-say "소비하지 않으려면 nonconsuming 을 앞에 붙인다."
+say "choice 는 기본이 consuming 입니다. 행사되면 계약이 사라집니다."
+say "소비하지 않으려면 nonconsuming 을 앞에 붙입니다."
 pause
 
 show "$SRC" "nonconsuming choice ShowBalance" 4
 
 printf '\n'
-say "잔액 조회처럼 상태를 바꾸지 않는 행위에 쓴다."
-note "다만 Daml Script 나 API 로 그냥 query 하면 될 일을 choice 로 만들 필요는 없다."
+say "잔액 조회처럼 상태를 바꾸지 않는 행위에 씁니다."
+note "다만 Daml Script 나 API 로 그냥 query 하면 될 일을 choice 로 만들 필요는 없습니다."
 note "nonconsuming 이 정말 필요한 것은 계약을 유지하면서 다른 계약을 만들 때다."
 
 # ─── 5 ────────────────────────────────────────────────────────────────
@@ -196,16 +196,16 @@ CALC
 say "${B}Citi 혼자 행사했는데 Alice 서명이 필요한 계약이 만들어진다.${R}"
 printf '\n'
 say "이것이 중요한 함의를 갖는다 — ${B}계약에 서명한다는 것은 그 template 에 선언된"
-say "모든 choice 에 동의한다는 뜻${R}이다. Alice 는 Deposit 을 수락한 시점에"
-say "'Citi 가 이자를 붙일 수 있다'에 이미 동의했다. 매번 다시 묻지 않는다."
+say "모든 choice 에 동의한다는 뜻${R}입니다. Alice 는 Deposit 을 수락한 시점에"
+say "'Citi 가 이자를 붙일 수 있다'에 이미 동의했습니다. 매번 다시 묻지 않습니다."
 printf '\n'
-note "현실의 계약과 같다. 약관에 서명하면 그 조항이 발동할 때마다 다시 서명하지 않는다."
+note "현실의 계약과 같습니다. 약관에 서명하면 그 조항이 발동할 때마다 다시 서명하지 않습니다."
 
 # ─── 6 ────────────────────────────────────────────────────────────────
 
 title "테스트 — Daml Script"
-say "dpm test 는 인메모리 엔진으로 스크립트를 실행한다."
-say "빠르지만 Canton 이 아니다. Sequencer·Mediator·확인 프로토콜이 없다."
+say "dpm test 는 인메모리 엔진으로 스크립트를 실행합니다."
+say "빠르지만 Canton 이 아닙니다. Sequencer·Mediator·확인 프로토콜이 없습니다."
 printf '\n'
 say "로직 검증은 여기서 빠르게, 원장 동작 확인은 Step 02 의 러너로."
 pause
@@ -213,7 +213,7 @@ pause
 show "$TST" "^testPartialWithdraw" 15
 
 printf '\n'
-note "submitMustFail 은 '반드시 거부되어야 함'을 검증한다."
+note "submitMustFail 은 '반드시 거부되어야 함'을 검증합니다."
 note "성공 경로만큼 실패 경로를 테스트하는 것이 권한 모델에서는 특히 중요하다."
 
 # ─── 7 ────────────────────────────────────────────────────────────────
@@ -243,12 +243,12 @@ printf '\n'
 ok "$PASSED 개 통과 (setup 헬퍼 포함)"
 
 printf '\n'
-say "커버리지 리포트도 함께 나온다."
+say "커버리지 리포트도 함께 나옵니다."
 grep -A 3 "Internal template choices" "$OUT" | sed 's/^/    /'
 printf '\n'
-note "5개 중 3개만 행사된 것으로 나온다. 나머지 둘은 Transfer 와 Archive 다."
+note "5개 중 3개만 행사된 것으로 나옵니다. 나머지 둘은 Transfer 와 Archive 다."
 note "Transfer 는 submitMustFail 로만 호출되므로 '행사됨'으로 세지 않는다 — 실제로"
-note "성공한 적이 없기 때문이다. Archive 는 이 테스트에서 직접 부르지 않았다."
+note "성공한 적이 없기 때문입니다. Archive 는 이 테스트에서 직접 부르지 않았다."
 
 # ─── 8 ────────────────────────────────────────────────────────────────
 
@@ -259,7 +259,7 @@ pause
 show "$SRC" "choice Transfer" 7
 
 printf '\n'
-say "컴파일은 된다. 그런데 실행하면 실패한다."
+say "컴파일은 됩니다. 그런데 실행하면 실패합니다."
 printf '\n'
 cat <<'CALC2'
       signatory  = Citi, Alice
@@ -268,20 +268,20 @@ cat <<'CALC2'
       권한        = Citi, Alice
 
       만들려는 계약의 signatory = Citi, Bob
-                                        ↑ Bob 의 권한이 없다
+                                        ↑ Bob 의 권한이 없습니다
 
 CALC2
-say "테스트가 이것을 문서화하고 있다."
+say "테스트가 이것을 문서화하고 있습니다."
 show "$TST" "^testTransferFails" 12
 
 printf '\n'
-warn "이것은 버그가 아니다."
+warn "이것은 버그가 아닙니다."
 say "Deposit 은 owner 의 서명이 필요한 계약인데, 아직 아무 관계도 없는 Bob 이"
-say "서명했을 리 없다. ${B}남에게 원치 않는 채권·채무를 떠넘길 수 없다${R}는 뜻이고,"
+say "서명했을 리 없습니다. ${B}남에게 원치 않는 채권·채무를 떠넘길 수 없습니다${R}는 뜻이고,"
 say "Daml 이 의도한 안전장치다."
 printf '\n'
 note "현실에서도 마찬가지다. 내 예금 계약의 명의를 상대 동의 없이 남에게"
-note "넘길 수는 없다."
+note "넘길 수는 없습니다."
 
 # ─── 9 ────────────────────────────────────────────────────────────────
 
@@ -289,17 +289,17 @@ title "확인한 것"
 cat <<SUMMARY
 
   template          with 는 필드, where 는 규칙
-  signatory         동의가 필요한 party. 한쪽만으로는 계약을 못 만든다
+  signatory         동의가 필요한 party. 한쪽만으로는 계약을 못 만듭니다
   ensure            원장 기록 전 항상 검사되는 불변식
   choice            상태를 바꾸는 유일한 수단. 기본은 consuming
   nonconsuming      계약을 소비하지 않는 choice
   controller        그 choice 를 행사할 수 있는 party. signatory 와 별개
   권한 계산          [계약의 signatory] + [choice 의 controller]
   서명의 의미        template 의 모든 choice 에 미리 동의하는 것
-  계약 불변성        수정이 아니라 archive + create. 계약 ID 가 바뀐다
-  dpm test         인메모리 개발 루프. Canton 이 아니다
+  계약 불변성        수정이 아니라 archive + create. 계약 ID 가 바뀝니다
+  dpm test         인메모리 개발 루프. Canton 이 아닙니다
 
-  ${B}남은 문제${R}  Transfer 가 실패한다. 새 owner 의 권한을 어떻게 얻는가?
+  ${B}남은 문제${R}  Transfer 가 실패합니다. 새 owner 의 권한을 어떻게 얻는가?
 
   ${B}다음${R}  Step 04 — propose/accept. 두 시점에 나뉜 동의를 하나의
         트랜잭션에서 결합해 이체를 성립시킨다.
