@@ -85,10 +85,15 @@ cat <<'BANNER'
 BANNER
 printf '%s\n' "$R"
 
-[ -f ./env.sh ] || die "env.sh 가 없습니다. README 의 '시작하기' 를 먼저 진행하세요."
+# env.sh 가 있으면 읽는다. 없어도 된다 — PATH 에 dpm 과 java 만 있으면 동작한다.
 # shellcheck disable=SC1091
-source ./env.sh
-command -v dpm >/dev/null 2>&1 || die "dpm 을 찾을 수 없습니다. README 의 '시작하기' 를 먼저 진행하세요."
+[ -f ./env.sh ] && source ./env.sh
+
+command -v dpm >/dev/null 2>&1 || die "dpm 을 찾을 수 없습니다.
+    설치: https://docs.canton.network/sdks-tools/cli-tools/dpm
+    설치 후 PATH 에 추가하세요:  export PATH=\"\$HOME/.dpm/bin:\$PATH\""
+java -version >/dev/null 2>&1 || die "JDK 21 이상이 필요합니다.
+    JAVA_HOME 을 설정하거나 java 를 PATH 에 두세요."
 mkdir -p "$ROOT/.step03"
 
 # ─── 1 ───────────────────────────────────────────────────────────────────────

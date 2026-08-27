@@ -4,61 +4,35 @@
 
 Step 을 순서대로 거치면서 그 목표에 도달한다.
 
-## 공식 문서
+## 사전 준비
 
-| | |
-| --- | --- |
-| Canton Network 개발자 문서 | https://docs.canton.network/ |
-| Daml SDK | https://docs.canton.network/sdks-tools/sdks/daml-sdk |
-| DPM (CLI) | https://docs.canton.network/sdks-tools/cli-tools/dpm |
+| 필요한 것 | 확인 | 설치 |
+| --- | --- | --- |
+| **DPM** — Daml/Canton 공식 CLI | `dpm version` | [설치 문서](https://docs.canton.network/sdks-tools/cli-tools/dpm) |
+| **JDK 21 이상** | `java -version` | 배포판은 자유 (Temurin, Zulu, Corretto, OpenJDK …) |
 
-`docs.digitalasset.com/build/3.4/*` 링크는 현재 404 다. 문서가 docs.canton.network 로
-이전되었으므로 그쪽을 볼 것.
+`dpm` 이 PATH 에 있고 `java` 가 동작하면 준비 끝이다. 설치 위치나 방법은 상관없다.
 
-## 시작하기
-
-### 1. JDK
+SDK 는 프로젝트의 `daml.yaml` 에 적힌 버전을 쓴다. 저장소 루트에서:
 
 ```sh
-brew install openjdk@21
-```
-
-### 2. SDK
-
-Digital Asset 의 공식 CLI 는 **DPM(Digital Asset Package Manager)** 이다. 3.4.x 부터
-`daml` 어시스턴트를 대체했고, arm64 네이티브 빌드를 제공하므로 Rosetta 가 필요 없다.
-
-```sh
-curl https://get.digitalasset.com/install/install.sh | sh
-```
-
-SDK 를 설치한다. 버전은 `daml.yaml` 의 `sdk-version` 을 따른다.
-
-```sh
-export PATH="${HOME}/.dpm/bin:${PATH}"
 dpm install
 ```
 
-### 3. 환경 스크립트
+`dpm build` 는 JVM 없이도 되지만 `dpm test` 와 `dpm sandbox` 는 JDK 가 필요하다.
 
-프로젝트 전용으로 만든다. `~/.zshrc` 는 건드리지 않는다.
+### 환경 변수를 셸에 두고 싶지 않다면
+
+저장소 루트에 `env.sh` 를 만들어 두면 러너가 자동으로 읽는다. `.gitignore` 에 있으므로
+커밋되지 않는다. 없어도 무방하다.
 
 ```sh
-cat > env.sh <<'EOF'
-export JAVA_HOME="/opt/homebrew/opt/openjdk@21"
+# 예시 — 자기 환경에 맞게
+export JAVA_HOME="$(/usr/libexec/java_home -v 21)"   # macOS
 export PATH="$JAVA_HOME/bin:$HOME/.dpm/bin:$PATH"
-EOF
 ```
 
-작업할 때마다 저장소 루트에서:
-
-```sh
-source ./env.sh
-```
-
-`env.sh` 는 `.gitignore` 에 있다. 로컬 경로에 의존하므로 커밋하지 않는다.
-
-### 4. 첫 Step
+## 실행
 
 용어부터 읽는다. 코드는 없다.
 
@@ -80,6 +54,14 @@ source ./env.sh
 각 Step 문서는 러너가 무엇을 보여주는지와 남겨야 할 결론을 담고 있다. 러너를 돌리고
 문서를 읽는 순서를 권한다.
 
+## 공식 문서
+
+| | |
+| --- | --- |
+| Canton Network 개발자 문서 | https://docs.canton.network/ |
+| Daml SDK | https://docs.canton.network/sdks-tools/sdks/daml-sdk |
+| DPM | https://docs.canton.network/sdks-tools/cli-tools/dpm |
+
 ## 학습 경로
 
 | Step | 문서 | 러너 | 다루는 것 |
@@ -92,16 +74,7 @@ source ./env.sh
 시나리오는 하나로 이어진다 — **Citi 가 Alice 에게 토큰화 예금을 발행하고, Alice 가
 Bob 에게 이체한다.** 등장 인물은 Step 01 에 정의되어 있다.
 
-## 환경
-
-| 항목 | 값 |
-| --- | --- |
-| SDK | 3.5.5 (Canton 3.5.12, LF 2.1) |
-| CLI | DPM — `~/.dpm` |
-| 최신 릴리스 확인 | `curl -sS https://get.digitalasset.com/install/latest` |
-| JVM | OpenJDK 21 (Homebrew keg-only) |
-
-### 알아둘 것
+## 알아둘 것
 
 - **`daml` 어시스턴트는 쓰지 않는다.** 3.5 에서 제거되었고 [DPM](https://docs.canton.network/sdks-tools/cli-tools/dpm) 이 대체한다. 이 저장소는 `dpm` 만 쓴다.
 - **Daml 3 에는 contract key 가 없다**: 2.x 튜토리얼의 `key` / `maintainer` / `fetchByKey` 는 컴파일되지 않는다.
