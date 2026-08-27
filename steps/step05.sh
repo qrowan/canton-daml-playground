@@ -102,12 +102,12 @@ mkdir -p "$WORK"
 
 cleanup() {
   if [ "$KEEP" = 1 ]; then
-    printf '\n%s 노드를 계속 실행 중입니다. 끄려면: pkill -f canton.jar%s\n' "$DIM" "$R"
+    printf '\n%s 노드를 계속 실행 중입니다. 끄려면: pkill -f 'daemon -c canton/canton.conf'%s\n' "$DIM" "$R"
     return
   fi
   printf '\n%s 노드 종료 중...%s\n' "$DIM" "$R"
   [ -n "${CANTON_PID:-}" ] && kill "$CANTON_PID" 2>/dev/null
-  pkill -f 'canton.jar daemon' 2>/dev/null
+  pkill -f 'daemon -c canton/canton.conf' 2>/dev/null
   true
 }
 trap cleanup EXIT
@@ -157,8 +157,16 @@ DAR=$(ls -t .daml/dist/*.dar 2>/dev/null | head -1)
 [ -n "$DAR" ] || { dpm build >/dev/null 2>&1; DAR=$(ls -t .daml/dist/*.dar | head -1); }
 ok "DAR: $DAR"
 
-pkill -f 'canton.jar daemon' 2>/dev/null
-sleep 1
+# 이전 실행이 남아 있으면 포트를 붙잡고 있다. 완전히 사라질 때까지 기다린다.
+pkill -f 'daemon -c canton/canton.conf' 2>/dev/null
+for _ in $(seq 1 30); do
+  pgrep -f 'daemon -c canton/canton.conf' >/dev/null 2>&1 || break
+  sleep 1
+done
+for _ in $(seq 1 30); do
+  if ! nc -z localhost 5002 2>/dev/null && ! nc -z localhost 5011 2>/dev/null; then break; fi
+  sleep 1
+done
 
 printf '%s$ java -jar canton.jar daemon -c canton/canton.conf --bootstrap canton/bootstrap.canton%s\n\n' "$YE" "$R"
 STEP05_DAR="$ROOT/$DAR" nohup java -jar "$CANTON_JAR" daemon \
@@ -174,7 +182,12 @@ for _ in $(seq 1 120); do
   sleep 2
 done
 printf '\n'
-[ "$READY" = 1 ] || { tail -25 "$LOG"; die "기동 실패"; }
+if [ "$READY" != 1 ]; then
+  grep -iE "Failed to bind|Address already in use" "$LOG" | head -3
+  tail -15 "$LOG"
+  die "기동 실패. 포트 5001~5003, 5011~5013, 5021~5023 이 비어 있는지 확인하세요:
+    pkill -f 'daemon -c canton/canton.conf'"
+fi
 
 CITI=$(grep '^CITI='  "$LOG" | tail -1 | cut -d= -f2)
 ALICE=$(grep '^ALICE=' "$LOG" | tail -1 | cut -d= -f2)
@@ -212,18 +225,45 @@ say "발급자를 가리킨다는 것이 여기서 눈에 보입니다."
 
 # ─── 5 ───────────────────────────────────────────────────────────────────────
 
-title "각 노드는 자기가 호스팅하는 Party 만 안다"
+title "아는 Party 와 호스팅하는 Party 는 다릅니다"
+say "각 노드에 Party 목록을 물어봅니다."
 pause
 
+listparties() {
+  curl -s "$1/v2/parties" | python3 -c '
+import sys, json
+for x in sorted(json.load(sys.stdin)["partyDetails"], key=lambda x: x["party"]):
+    name = x["party"].split("::")[0]
+    local = x["isLocal"]
+    mark = "호스팅함" if local else "알기만 함"
+    print("    %-18s isLocal=%-5s  %s" % (name, local, mark))
+'
+}
+
 printf '%s$ GET %s/v2/parties   (citi-participant)%s\n\n' "$YE" "$CITI_API" "$R"
-curl -s "$CITI_API/v2/parties" | jq_ 'print("  " + "\n  ".join(sorted(x["party"].split("::")[0] for x in d["partyDetails"])))'
+listparties "$CITI_API"
 
 printf '\n%s$ GET %s/v2/parties   (morganstanley-participant)%s\n\n' "$YE" "$MS_API" "$R"
-curl -s "$MS_API/v2/parties" | jq_ 'print("  " + "\n  ".join(sorted(x["party"].split("::")[0] for x in d["partyDetails"])))'
+listparties "$MS_API"
 
 printf '\n'
-say "${B}Bob 은 citi 노드 목록에 없고, Alice 는 morganstanley 목록에 없습니다.${R}"
-note "각 노드가 자기 Party 만 호스팅합니다. Step 02 에서는 한 노드에 전부 있었습니다."
+say "${B}양쪽 목록에 이름은 다 나옵니다.${R} Party 의 존재는 Topology 로 전파되므로"
+say "네트워크의 모든 노드가 압니다. Step 01 에서 Topology 를 '누가 존재하는지의"
+say "상태' 라고 한 것이 이것입니다."
+printf '\n'
+say "갈라지는 것은 ${B}isLocal${R} 입니다."
+printf '\n'
+cat <<'SPLIT'
+    citi-participant            morganstanley-participant
+      Citi   isLocal=true          Bob    isLocal=true
+      Alice  isLocal=true          그 외  isLocal=false
+      그 외  isLocal=false
+
+SPLIT
+note "isLocal 은 PartyToParticipant 매핑의 반영입니다 — 이 노드가 그 Party 의"
+note "권한을 행사하고 데이터를 보관하는가."
+note "'존재를 안다' 와 '호스팅한다' 를 구분하는 것이 이 단계의 요점입니다."
+note "10단계에서 이 차이가 제출 거부로 드러납니다."
 
 # ─── 6 ───────────────────────────────────────────────────────────────────────
 
@@ -445,7 +485,7 @@ title "확인한 것"
 cat <<SUMMARY
 
   Namespace          발급 노드마다 지문이 다릅니다
-  Party 호스팅        각 노드는 자기 Party 만 압니다
+  Party 호스팅        모든 노드가 Party 의 존재를 압니다. isLocal 이 호스팅을 가릅니다
   User               노드마다 따로 만들어야 합니다
   Vetting            양쪽 노드가 같은 Package ID 를 갖고 있어야 합니다
   데이터 격리          가려진 것이 아니라 도달하지 않습니다

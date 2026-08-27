@@ -115,14 +115,27 @@ Alice 는 `citi-participant` 가, Bob 은 `morganstanley-participant` 가 발급
 
 Party ID 의 뒷부분이 발급자를 가리킨다는 것이 눈에 보입니다.
 
-### 2. 각 노드는 자기 Party 만 압니다
+### 2. "아는 것" 과 "호스팅하는 것" 은 다릅니다
+
+`/v2/parties` 는 **Topology 상의 모든 Party** 를 돌려줍니다. 양쪽 노드 모두 5개를 전부
+봅니다. Party 의 존재는 Synchronizer 를 통해 전파되므로 네트워크 전체가 압니다.
+
+갈라지는 것은 `isLocal` 입니다.
 
 ```
-citi-participant           Alice, Citi, citi
-morganstanley-participant  Bob, morganstanley
+citi-participant                     morganstanley-participant
+  Alice          isLocal=true          Alice          isLocal=false
+  Citi           isLocal=true          Bob            isLocal=true
+  citi           isLocal=true          Citi           isLocal=false
+  Bob            isLocal=false         citi           isLocal=false
+  morganstanley  isLocal=false         morganstanley  isLocal=true
 ```
 
-Bob 은 citi 목록에 없고 Alice 는 morganstanley 목록에 없습니다.
+`isLocal` 은 `PartyToParticipant` 매핑의 반영입니다 — 이 노드가 그 Party 의 권한을
+행사하고 데이터를 보관하는가.
+
+Step 01 에서 Namespace 와 PartyToParticipant 를 나눠 설명한 것이 여기서 관측됩니다.
+Namespace 는 Party ID 에 박혀 있고, PartyToParticipant 는 `isLocal` 로 드러납니다.
 
 ### 3. User 는 노드마다 따로 만들어야 합니다
 
