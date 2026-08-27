@@ -221,6 +221,5 @@ signatory 도 `deposit.bank, deposit.owner` 로 참조한다.
 
 ---
 
-다음: **Step 05 — 다중 participant.** `canton.conf` 로 노드를 2개 띄우고 Alice 와
-Bob 을 서로 다른 participant 에 두어 실제로 확인한다. 여기서 vetting, 토폴로지,
-신뢰 경계가 처음 드러난다.
+다음: **[Step 05 — 다중 Participant](Step05MultiParticipant.md).** 노드를 직접 띄우고
+Alice 와 Bob 을 서로 다른 Participant 에 두어 실제로 확인한다.

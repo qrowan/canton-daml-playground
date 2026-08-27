@@ -70,6 +70,7 @@ export PATH="$JAVA_HOME/bin:$HOME/.dpm/bin:$PATH"
 | 02 | [환경 세팅](steps/Step02Environment.md) | `step02.sh` | Participant 기동, Party·User 생성, HTTP 로 Contract 생성·조회 |
 | 03 | [첫 계약](steps/Step03FirstContract.md) | `step03.sh` | Daml 문법. Choice / Controller / 권한 계산 |
 | 04 | [두 당사자](steps/Step04TwoParties.md) | `step04.sh` | Propose-accept. 권한 결합, Observer |
+| 05 | [다중 Participant](steps/Step05MultiParticipant.md) | `step05.sh` | 노드 4개 직접 기동. 데이터 격리·vetting·노드 간 이체 |
 
 시나리오는 하나로 이어진다 — **Citi 가 Alice 에게 토큰화 예금을 발행하고, Alice 가
 Bob 에게 이체한다.** 등장 인물은 Step 01 에 정의되어 있다.
@@ -99,6 +100,7 @@ dpm studio         # VS Code + Daml 확장
 ```
 steps/            학습 문서 + 러너 스크립트
 daml/             Daml 소스 — daml.yaml 의 source 루트
+canton/           Canton 노드 설정과 bootstrap 스크립트 (Step 05~)
 env.sh            로컬 환경 (gitignore)
 ```
 

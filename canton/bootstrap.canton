@@ -1,0 +1,28 @@
+nodes.local.start()
+
+bootstrap.synchronizer(
+  synchronizerName = "dtcc",
+  sequencers = Seq(dtccSequencer),
+  mediators = Seq(dtccMediator),
+  synchronizerOwners = Seq(dtccSequencer),
+  synchronizerThreshold = PositiveInt.one,
+  staticSynchronizerParameters = StaticSynchronizerParameters.defaults(dtccSequencer.config.crypto, ProtocolVersion.latest),
+)
+
+citi.synchronizers.connect_local(dtccSequencer, alias = "dtcc")
+morganstanley.synchronizers.connect_local(dtccSequencer, alias = "dtcc")
+
+val dar = sys.env.getOrElse("STEP05_DAR", "")
+if (dar.nonEmpty) {
+  citi.dars.upload(dar)
+  morganstanley.dars.upload(dar)
+}
+
+val citiParty  = citi.parties.enable("Citi")
+val aliceParty = citi.parties.enable("Alice")
+val bobParty   = morganstanley.parties.enable("Bob")
+
+println("=== READY ===")
+println("CITI="  + citiParty.toProtoPrimitive)
+println("ALICE=" + aliceParty.toProtoPrimitive)
+println("BOB="   + bobParty.toProtoPrimitive)
