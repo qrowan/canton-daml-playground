@@ -1,0 +1,163 @@
+{-
+
+================================================================================
+ Step 06 — DvP: 증권과 현금의 원자적 교환
+================================================================================
+
+Bob 이 보유한 채권을 Alice 에게 팔고, Alice 는 현금을 지급한다.
+두 이전이 **하나의 Transaction 안에서** 일어나야 한다.
+
+
+■ 왜 원자성이 필요한가
+
+  나눠서 하면 이렇게 된다.
+
+      TX 1  Bob 이 채권을 Alice 에게 이전
+      TX 2  Alice 가 현금을 Bob 에게 이전     ← 여기서 멈추면 Bob 만 손해
+
+  이것을 결제 리스크(principal risk)라 하고, 현실 금융에서는 중앙청산소나
+  에스크로를 두어 막는다. Daml 은 두 이전을 한 Transaction 에 담아 구조적으로
+  없앤다. 전부 성공하거나 전부 실패한다.
+
+
+■ Step 03 의 연습문제 5번에 대한 답
+
+  Step 03 에서 Transfer 가 실패했을 때, "controller 를 owner, newOwner 로 바꾸면
+  되지 않나?" 라는 질문을 남겼다. 답은 **그 자체로는 해결이 아니지만 DvP 에서는
+  바로 그것이 필요하다** 이다.
+
+      choice CashTransfer
+        controller owner, newOwner
+
+  이렇게 두면 이 Choice 는 **양쪽 권한이 모두 있는 Transaction 안에서만** 행사할
+  수 있다. Alice 혼자서는 못 쓴다. 그런데 DvP 결제 Transaction 은 이미 양쪽 권한을
+  갖고 있으므로 거기서는 쓸 수 있다.
+
+  즉 이 Choice 는 "단독으로는 불가, 합의된 결제 안에서는 가능" 이라는 조건을
+  타입 수준에서 표현한 것이다.
+
+
+■ 권한이 어떻게 흐르는가
+
+  Settle 을 행사하는 시점:
+
+      DvpProposal 의 signatory = GoldmanSachs, Bob
+      Settle 의 controller     = Alice
+      ─────────────────────────────────────────
+      이 지점의 권한            = GoldmanSachs, Bob, Alice
+
+  채권 다리 — 직접 create:
+
+      만들려는 Bond 의 signatory = GoldmanSachs, Alice   → 충족
+
+  현금 다리 — 중첩 exercise:
+
+      exercise cashCid CashTransfer
+        controller = Alice, Bob   → 둘 다 현재 권한에 있으므로 행사 가능
+        그 안의 권한 = [Cash 의 signatory] + [controller]
+                     = (Citi, Alice) + (Alice, Bob)
+                     = Citi, Alice, Bob
+        만들려는 Cash 의 signatory = Citi, Bob            → 충족
+
+  **Citi 는 이 Transaction 에 아무 행위도 하지 않았는데 권한이 실렸다.**
+  Cash Contract 의 signatory 로서 이미 동의해 둔 것이 Choice 를 통해 흘러온 것이다.
+  발행자가 결제 시점에 온라인일 필요가 없는 이유다.
+
+
+■ 채권은 제안 시점에 잠긴다
+
+  ProposeDvp 가 원본 Bond 를 소비한다. 제안이 살아있는 동안 Bob 의 ACS 에 채권이
+  없다. 그래서 Bob 은 같은 채권을 다른 사람에게 이중으로 팔 수 없다.
+
+  이것은 결제 리스크가 아니라 유동성 제약이다. Alice 의 현금은 움직인 적이 없고,
+  Bob 은 언제든 Cancel 로 회수할 수 있다.
+
+
+■ 현금은 잠기지 않는다
+
+  Alice 의 현금은 Settle 시점에 지정된다. 그 사이 Alice 가 그 현금을 다른 데 쓰면
+  Settle 이 실패한다 — 소비된 Contract 를 참조하게 되기 때문이다.
+
+  실패로 끝나므로 안전하지만 Bob 은 헛수고한다. 양쪽을 다 잠그려면 현금 쪽에도
+  제안 절차가 필요하고, 그러면 3-way 워크플로가 된다.
+
+================================================================================
+-}
+
+module Step06.Dvp where
+
+template Cash
+  with
+    bank : Party
+    owner : Party
+    amount : Decimal
+  where
+    signatory bank, owner
+
+    ensure amount > 0.0
+
+    choice CashTransfer : ContractId Cash
+      with
+        newOwner : Party
+      controller owner, newOwner
+      do
+        create this with owner = newOwner
+
+template Bond
+  with
+    issuer : Party
+    owner : Party
+    isin : Text
+    quantity : Decimal
+  where
+    signatory issuer, owner
+
+    ensure quantity > 0.0
+
+    choice BondTransfer : ContractId Bond
+      with
+        newOwner : Party
+      controller owner, newOwner
+      do
+        create this with owner = newOwner
+
+    choice ProposeDvp : ContractId DvpProposal
+      with
+        buyer : Party
+        price : Decimal
+      controller owner
+      do
+        assertMsg "매수자와 매도자가 같습니다" (buyer /= owner)
+        assertMsg "가격은 0보다 커야 합니다" (price > 0.0)
+        create DvpProposal with bond = this, buyer, price
+
+template DvpProposal
+  with
+    bond : Bond
+    buyer : Party
+    price : Decimal
+  where
+    signatory bond.issuer, bond.owner
+    observer buyer
+
+    choice Settle : (ContractId Bond, ContractId Cash)
+      with
+        cashCid : ContractId Cash
+      controller buyer
+      do
+        cash <- fetch cashCid
+        assertMsg "현금 보유자가 매수자가 아닙니다" (cash.owner == buyer)
+        assertMsg "지급액이 가격과 다릅니다" (cash.amount == price)
+        newBond <- create bond with owner = buyer
+        newCash <- exercise cashCid CashTransfer with newOwner = bond.owner
+        pure (newBond, newCash)
+
+    choice Reject : ContractId Bond
+      controller buyer
+      do
+        create bond
+
+    choice Cancel : ContractId Bond
+      controller bond.owner
+      do
+        create bond

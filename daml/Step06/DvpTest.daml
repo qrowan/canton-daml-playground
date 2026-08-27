@@ -1,0 +1,289 @@
+{-
+
+================================================================================
+ Step 06 테스트 — DvP
+================================================================================
+
+■ 등장 인물
+
+  Citi           현금(토큰화 예금) 발행
+  GoldmanSachs   채권 발행
+  Bob            채권 보유. 매도자
+  Alice          현금 보유. 매수자
+  David          제3자
+
+
+■ 각 테스트가 검증하는 것
+
+  단독 이전 차단
+    testAliceCannotMoveCashAlone   Alice 혼자 현금을 Bob 에게 보낼 수 없다
+    testBobCannotMoveBondAlone     Bob 혼자 채권을 Alice 에게 보낼 수 없다
+                                   → controller owner, newOwner 의 효과
+
+  정상 결제
+    testSettle                     한 Transaction 에서 양방향 이전
+    testSettleIsSingleTransaction  결제 전후 활성 Contract 구성
+
+  잠금
+    testBondLockedDuringProposal   제안 구간에 Bob 의 채권이 사라진다
+    testCannotDoubleSell           같은 채권을 두 번 팔 수 없다
+
+  원자성
+    testWrongAmountFails           금액이 다르면 양쪽 다 안 움직인다
+    testStaleCashFails             이미 쓴 현금으로는 결제되지 않는다
+    testOthersCashFails            남의 현금으로는 결제할 수 없다
+
+  권한
+    testStrangerCannotSettle       제3자는 결제할 수 없다
+    testStrangerCannotCancel       제3자는 철회할 수 없다
+
+  되돌리기
+    testRejectReturnsBond          매수자가 거절하면 채권이 돌아온다
+    testCancelReturnsBond          매도자가 철회해도 채권이 돌아온다
+
+================================================================================
+-}
+
+module Step06.DvpTest where
+
+import Daml.Script
+import DA.Assert ((===))
+import DA.Optional (isNone)
+import Step06.Dvp
+
+data Setup = Setup
+  with
+    citi : Party
+    gs : Party
+    alice : Party
+    bob : Party
+    david : Party
+
+setup : Script Setup
+setup = do
+  citi <- allocateParty "Citi"
+  gs <- allocateParty "GoldmanSachs"
+  alice <- allocateParty "Alice"
+  bob <- allocateParty "Bob"
+  david <- allocateParty "David"
+  pure Setup {citi, gs, alice, bob, david}
+
+mkCash : Setup -> Party -> Decimal -> Script (ContractId Cash)
+mkCash Setup{citi} owner amount =
+  submit [citi, owner] do
+    createCmd Cash with bank = citi, owner, amount
+
+mkBond : Setup -> Party -> Decimal -> Script (ContractId Bond)
+mkBond Setup{gs} owner quantity =
+  submit [gs, owner] do
+    createCmd Bond with issuer = gs, owner, isin = "US0000000001", quantity
+
+-- 단독 이전 차단 --------------------------------------------------------------
+
+testAliceCannotMoveCashAlone : Script ()
+testAliceCannotMoveCashAlone = do
+  s@Setup{alice, bob} <- setup
+
+  cashCid <- mkCash s alice 100.0
+
+  submitMustFail alice do
+    exerciseCmd cashCid CashTransfer with newOwner = bob
+
+testBobCannotMoveBondAlone : Script ()
+testBobCannotMoveBondAlone = do
+  s@Setup{alice, bob} <- setup
+
+  bondCid <- mkBond s bob 10.0
+
+  submitMustFail bob do
+    exerciseCmd bondCid BondTransfer with newOwner = alice
+
+-- 정상 결제 --------------------------------------------------------------------
+
+testSettle : Script ()
+testSettle = do
+  s@Setup{citi, gs, alice, bob} <- setup
+
+  bondCid <- mkBond s bob 10.0
+  cashCid <- mkCash s alice 100.0
+
+  proposalCid <- submit bob do
+    exerciseCmd bondCid ProposeDvp with buyer = alice, price = 100.0
+
+  (newBondCid, newCashCid) <- submit alice do
+    exerciseCmd proposalCid Settle with cashCid
+
+  Some newBond <- queryContractId alice newBondCid
+  newBond.owner === alice
+  newBond.issuer === gs
+  newBond.quantity === 10.0
+
+  Some newCash <- queryContractId bob newCashCid
+  newCash.owner === bob
+  newCash.bank === citi
+  newCash.amount === 100.0
+
+testSettleIsSingleTransaction : Script ()
+testSettleIsSingleTransaction = do
+  s@Setup{alice, bob} <- setup
+
+  bondCid <- mkBond s bob 10.0
+  cashCid <- mkCash s alice 100.0
+
+  proposalCid <- submit bob do
+    exerciseCmd bondCid ProposeDvp with buyer = alice, price = 100.0
+
+  _ <- submit alice do
+    exerciseCmd proposalCid Settle with cashCid
+
+  aliceBonds <- query @Bond alice
+  length aliceBonds === 1
+  aliceCash <- query @Cash alice
+  aliceCash === []
+
+  bobBonds <- query @Bond bob
+  bobBonds === []
+  bobCash <- query @Cash bob
+  length bobCash === 1
+
+-- 잠금 --------------------------------------------------------------------------
+
+testBondLockedDuringProposal : Script ()
+testBondLockedDuringProposal = do
+  s@Setup{alice, bob} <- setup
+
+  bondCid <- mkBond s bob 10.0
+
+  _ <- submit bob do
+    exerciseCmd bondCid ProposeDvp with buyer = alice, price = 100.0
+
+  gone <- queryContractId bob bondCid
+  isNone gone === True
+
+  bobBonds <- query @Bond bob
+  bobBonds === []
+
+  proposals <- query @DvpProposal bob
+  length proposals === 1
+
+testCannotDoubleSell : Script ()
+testCannotDoubleSell = do
+  s@Setup{alice, bob, david} <- setup
+
+  bondCid <- mkBond s bob 10.0
+
+  _ <- submit bob do
+    exerciseCmd bondCid ProposeDvp with buyer = alice, price = 100.0
+
+  submitMustFail bob do
+    exerciseCmd bondCid ProposeDvp with buyer = david, price = 90.0
+
+-- 원자성 ------------------------------------------------------------------------
+
+testWrongAmountFails : Script ()
+testWrongAmountFails = do
+  s@Setup{alice, bob} <- setup
+
+  bondCid <- mkBond s bob 10.0
+  cashCid <- mkCash s alice 90.0
+
+  proposalCid <- submit bob do
+    exerciseCmd bondCid ProposeDvp with buyer = alice, price = 100.0
+
+  submitMustFail alice do
+    exerciseCmd proposalCid Settle with cashCid
+
+  aliceBonds <- query @Bond alice
+  aliceBonds === []
+  Some stillCash <- queryContractId alice cashCid
+  stillCash.owner === alice
+  stillCash.amount === 90.0
+
+testStaleCashFails : Script ()
+testStaleCashFails = do
+  s@Setup{alice, bob, david} <- setup
+
+  bondCid <- mkBond s bob 10.0
+  cashCid <- mkCash s alice 100.0
+
+  proposalCid <- submit bob do
+    exerciseCmd bondCid ProposeDvp with buyer = alice, price = 100.0
+
+  _ <- submit [alice, david] do
+    exerciseCmd cashCid CashTransfer with newOwner = david
+
+  submitMustFail alice do
+    exerciseCmd proposalCid Settle with cashCid
+
+testOthersCashFails : Script ()
+testOthersCashFails = do
+  s@Setup{alice, bob, david} <- setup
+
+  bondCid <- mkBond s bob 10.0
+  davidCash <- mkCash s david 100.0
+
+  proposalCid <- submit bob do
+    exerciseCmd bondCid ProposeDvp with buyer = alice, price = 100.0
+
+  submitMustFail alice do
+    exerciseCmd proposalCid Settle with cashCid = davidCash
+
+-- 권한 --------------------------------------------------------------------------
+
+testStrangerCannotSettle : Script ()
+testStrangerCannotSettle = do
+  s@Setup{alice, bob, david} <- setup
+
+  bondCid <- mkBond s bob 10.0
+  davidCash <- mkCash s david 100.0
+
+  proposalCid <- submit bob do
+    exerciseCmd bondCid ProposeDvp with buyer = alice, price = 100.0
+
+  submitMustFail david do
+    exerciseCmd proposalCid Settle with cashCid = davidCash
+
+testStrangerCannotCancel : Script ()
+testStrangerCannotCancel = do
+  s@Setup{alice, bob, david} <- setup
+
+  bondCid <- mkBond s bob 10.0
+
+  proposalCid <- submit bob do
+    exerciseCmd bondCid ProposeDvp with buyer = alice, price = 100.0
+
+  submitMustFail david do
+    exerciseCmd proposalCid Cancel
+
+-- 되돌리기 ----------------------------------------------------------------------
+
+testRejectReturnsBond : Script ()
+testRejectReturnsBond = do
+  s@Setup{alice, bob} <- setup
+
+  bondCid <- mkBond s bob 10.0
+
+  proposalCid <- submit bob do
+    exerciseCmd bondCid ProposeDvp with buyer = alice, price = 100.0
+
+  returnedCid <- submit alice do
+    exerciseCmd proposalCid Reject
+
+  Some b <- queryContractId bob returnedCid
+  b.owner === bob
+  b.quantity === 10.0
+
+testCancelReturnsBond : Script ()
+testCancelReturnsBond = do
+  s@Setup{alice, bob} <- setup
+
+  bondCid <- mkBond s bob 10.0
+
+  proposalCid <- submit bob do
+    exerciseCmd bondCid ProposeDvp with buyer = alice, price = 100.0
+
+  returnedCid <- submit bob do
+    exerciseCmd proposalCid Cancel
+
+  Some b <- queryContractId bob returnedCid
+  b.owner === bob

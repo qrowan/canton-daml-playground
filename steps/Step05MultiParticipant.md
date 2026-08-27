@@ -255,5 +255,5 @@ citi.ledger_api.state.acs.of_party(citi.parties.list().head.party)
 
 ---
 
-다음: **Step 06 — DvP.** 증권과 현금 두 다리를 하나의 Transaction 에서 동시에
-이전시켜 원자적 교환을 만듭니다.
+다음: **[Step 06 — DvP](Step06Dvp.md).** 증권과 현금 두 다리를 하나의 Transaction
+에서 동시에 이전시켜 원자적 교환을 만듭니다.
