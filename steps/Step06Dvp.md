@@ -178,7 +178,7 @@ Alice 의 현금은 `Settle` 시점에 인자로 지정됩니다. 그 사이 Ali
 
 ## 다중 노드에서 돌리려면
 
-이 Step 은 `daml test` 로 진행합니다. [Step 05](Step05MultiParticipant.md) 의 구성에
+이 Step 은 `dpm test` 로 진행합니다. [Step 05](Step05MultiParticipant.md) 의 구성에
 `goldmansachs` participant 를 추가하면 실제 노드 간 DvP 를 확인할 수 있습니다.
 
 `canton/canton.conf` 에 participant 를 하나 더 선언하고 `bootstrap.canton` 에서

@@ -78,7 +78,7 @@ Participant 마다 포트가 세 벌입니다.
 | `admin-api` | 노드 운영 — Party 생성, DAR 업로드, Topology |
 | `http-ledger-api` | JSON Ledger API |
 
-`daml sandbox` 는 이 구성을 감춰 두고 하나로 묶어 띄웠던 것입니다.
+`dpm sandbox` 는 이 구성을 감춰 두고 하나로 묶어 띄웠던 것입니다.
 
 ## Bootstrap
 
@@ -229,7 +229,13 @@ propose/accept 로 짜 두었기 때문에 노드가 분리돼도 그대로 동�
 끝나면 출력된 변수와 포트를 씁니다. Canton 콘솔로 노드에 직접 붙을 수도 있습니다.
 
 ```sh
-java -jar ~/.daml/sdk/3.4.11/canton/canton.jar sandbox-console -c canton/canton.conf
+java -jar "$CANTON_JAR" sandbox-console -c canton/canton.conf
+```
+
+`CANTON_JAR` 은 러너가 `--keep` 으로 끝날 때 출력해 줍니다. 직접 찾으려면:
+
+```sh
+find "${DPM_HOME:-$HOME/.dpm}/cache/components/canton-open-source" -name 'canton-open-source-*.jar'
 ```
 
 콘솔에서 볼 만한 것들입니다.

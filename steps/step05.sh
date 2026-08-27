@@ -79,13 +79,24 @@ cat <<'BANNER'
 BANNER
 printf '%s\n' "$R"
 
-[ -f ./env.sh ] || die "env.sh 가 없습니다. README 의 '세팅' 절을 먼저 진행하세요."
+# env.sh 가 있으면 읽는다. 없어도 된다 — PATH 에 dpm 과 java 만 있으면 동작한다.
 # shellcheck disable=SC1091
-source ./env.sh
-command -v daml >/dev/null 2>&1 || die "daml 을 찾을 수 없습니다."
+[ -f ./env.sh ] && source ./env.sh
 
-CANTON_JAR="$HOME/.daml/sdk/3.4.11/canton/canton.jar"
-[ -f "$CANTON_JAR" ] || die "canton.jar 을 찾을 수 없습니다: $CANTON_JAR"
+command -v dpm >/dev/null 2>&1 || die "dpm 을 찾을 수 없습니다.
+    설치: https://docs.canton.network/sdks-tools/cli-tools/dpm
+    설치 후 PATH 에 추가하세요:  export PATH=\"\$HOME/.dpm/bin:\$PATH\""
+java -version >/dev/null 2>&1 || die "JDK 21 이상이 필요합니다.
+    JAVA_HOME 을 설정하거나 java 를 PATH 에 두세요."
+
+# Canton jar 위치. CANTON_JAR 로 직접 지정할 수 있고, 없으면 DPM 캐시에서 찾는다.
+if [ -z "${CANTON_JAR:-}" ] || [ ! -f "${CANTON_JAR:-}" ]; then
+  CANTON_JAR=$(find "${DPM_HOME:-$HOME/.dpm}/cache/components/canton-open-source" \
+    -name 'canton-open-source-*.jar' 2>/dev/null | sort -V | tail -1)
+fi
+[ -n "$CANTON_JAR" ] && [ -f "$CANTON_JAR" ] || die "canton jar 을 찾을 수 없습니다.
+    dpm 으로 SDK 를 설치했는지 확인하세요:  dpm install
+    또는 직접 지정하세요:  export CANTON_JAR=/path/to/canton-open-source-*.jar"
 
 mkdir -p "$WORK"
 
@@ -104,7 +115,7 @@ trap cleanup EXIT
 # ─── 1 ───────────────────────────────────────────────────────────────────────
 
 title "설정 파일 — 노드를 직접 선언한다"
-say "daml sandbox 는 노드 구성을 감춰 놓았습니다. 여기서는 직접 씁니다."
+say "dpm sandbox 는 노드 구성을 감춰 놓았습니다. 여기서는 직접 씁니다."
 pause
 
 run "cat canton/canton.conf"
@@ -143,7 +154,7 @@ title "기동"
 pause
 
 DAR=$(ls -t .daml/dist/*.dar 2>/dev/null | head -1)
-[ -n "$DAR" ] || { daml build --no-legacy-assistant-warning >/dev/null 2>&1; DAR=$(ls -t .daml/dist/*.dar | head -1); }
+[ -n "$DAR" ] || { dpm build >/dev/null 2>&1; DAR=$(ls -t .daml/dist/*.dar | head -1); }
 ok "DAR: $DAR"
 
 pkill -f 'canton.jar daemon' 2>/dev/null
@@ -250,7 +261,7 @@ title "DAR 은 양쪽 노드에 각각 올라가 있다"
 say "Bootstrap 이 citi 와 morganstanley 양쪽에 업로드했습니다."
 pause
 
-PKG=$(daml damlc inspect-dar "$DAR" 2>/dev/null | grep -oE "[0-9a-f]{64}" | head -1)
+PKG=$(dpm inspect-dar "$DAR" 2>/dev/null | grep -oE "[0-9a-f]{64}" | head -1)
 ok "PKG = $PKG"
 printf '\n'
 

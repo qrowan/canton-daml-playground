@@ -84,10 +84,15 @@ cat <<'BANNER'
 BANNER
 printf '%s\n' "$R"
 
-[ -f ./env.sh ] || die "env.sh 가 없습니다."
+# env.sh 가 있으면 읽는다. 없어도 된다 — PATH 에 dpm 과 java 만 있으면 동작한다.
 # shellcheck disable=SC1091
-source ./env.sh
-command -v daml >/dev/null 2>&1 || die "daml 을 찾을 수 없습니다."
+[ -f ./env.sh ] && source ./env.sh
+
+command -v dpm >/dev/null 2>&1 || die "dpm 을 찾을 수 없습니다.
+    설치: https://docs.canton.network/sdks-tools/cli-tools/dpm
+    설치 후 PATH 에 추가하세요:  export PATH=\"\$HOME/.dpm/bin:\$PATH\""
+java -version >/dev/null 2>&1 || die "JDK 21 이상이 필요합니다.
+    JAVA_HOME 을 설정하거나 java 를 PATH 에 두세요."
 mkdir -p "$ROOT/.step06"
 
 # ─── 1 ───────────────────────────────────────────────────────────────────────
@@ -214,8 +219,8 @@ note "'채권만 넘어가고 현금은 안 오는' 상태가 존재할 수 없�
 title "실행"
 pause
 
-printf '%s$ daml test%s\n\n' "$YE" "$R"
-daml test --no-legacy-assistant-warning > "$OUT" 2>&1
+printf '%s$ dpm test%s\n\n' "$YE" "$R"
+dpm test > "$OUT" 2>&1
 [ $? = 0 ] || { tail -30 "$OUT"; die "테스트 실패"; }
 
 printf '  %s단독 이전 차단%s\n' "$B" "$R"
