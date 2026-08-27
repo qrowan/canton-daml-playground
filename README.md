@@ -27,10 +27,18 @@ dpm install
 커밋되지 않는다. 없어도 무방하다.
 
 ```sh
-# 예시 — 자기 환경에 맞게
-export JAVA_HOME="$(/usr/libexec/java_home -v 21)"   # macOS
+# 예시 — 자기 환경에 맞게 고쳐 쓸 것
+export JAVA_HOME=/path/to/jdk-21
 export PATH="$JAVA_HOME/bin:$HOME/.dpm/bin:$PATH"
 ```
+
+`java` 가 이미 동작하면 `PATH` 줄만 있어도 된다.
+
+> macOS 의 `/usr/bin/java` 는 JVM 이 아니라 stub 이다. `JAVA_HOME` 이 설정돼 있거나
+> `/Library/Java/JavaVirtualMachines` 에 JDK 가 등록돼 있어야 실제 JVM 을 찾는다.
+> 패키지 매니저로 설치한 JDK 는 거기 등록되지 않는 경우가 있으므로,
+> `java -version` 이 `Unable to locate a Java Runtime` 을 내면 `JAVA_HOME` 을 직접
+> 지정하면 된다.
 
 ## 실행
 
