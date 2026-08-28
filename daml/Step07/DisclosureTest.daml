@@ -1,0 +1,236 @@
+{-
+
+================================================================================
+ Step 07 테스트 — Observer 와 공시
+================================================================================
+
+■ 등장 인물
+
+  Citi        발행 은행
+  Alice       Citi 의 고객
+  Bob         이체 상대
+  SEC         감독기관. 상시 공시 대상
+  Auditor     외부 감사인. 필요할 때만 공시
+  David       제3자. 아무것도 못 봄
+
+
+■ 각 테스트가 검증하는 것
+
+  상시 공시
+    testRegulatorSees            SEC 는 발행 즉시 예금을 본다
+    testStrangerSeesNothing      David 는 아무것도 못 본다
+    testRegulatorSeesTransfer    이체 제안과 결과가 모두 SEC 에게 보인다
+
+  Observer 는 권한이 아니다
+    testRegulatorCannotTransfer  SEC 는 보지만 이체시킬 수 없다
+    testRegulatorCannotArchive   SEC 는 archive 할 수 없다
+    testStrangerCannotFreeze     제3자는 동결할 수 없다
+
+  명시된 권한만 행사할 수 있다
+    testRegulatorFreezes         SEC 는 Freeze Choice 가 있으므로 동결할 수 있다
+    testFrozenCannotTransfer     동결된 예금은 이체가 막힌다
+    testUnfreezeRestores         해제하면 다시 이체된다
+    testOwnerCannotFreeze        예금주는 자기 예금을 동결할 수 없다
+
+  선택적 공시
+    testPublishAddsAuditor       Publish 로 감사인에게 공개된다
+    testAuditorSeesNothingBefore 공개 전에는 감사인이 못 본다
+    testUnpublishHidesFuture     Unpublish 하면 이후 Contract 는 안 보인다
+
+================================================================================
+-}
+
+module Step07.DisclosureTest where
+
+import Daml.Script
+import DA.Assert ((===))
+import Step07.Disclosure
+
+data Setup = Setup
+  with
+    citi : Party
+    alice : Party
+    bob : Party
+    sec : Party
+    auditor : Party
+    david : Party
+
+setup : Script Setup
+setup = do
+  citi <- allocateParty "Citi"
+  alice <- allocateParty "Alice"
+  bob <- allocateParty "Bob"
+  sec <- allocateParty "SEC"
+  auditor <- allocateParty "Auditor"
+  david <- allocateParty "David"
+  pure Setup {citi, alice, bob, sec, auditor, david}
+
+issue : Setup -> Party -> Decimal -> Script (ContractId RegulatedDeposit)
+issue Setup{citi, sec} owner amount =
+  submit [citi, owner] do
+    createCmd RegulatedDeposit with
+      bank = citi
+      owner
+      regulator = sec
+      amount
+      frozen = False
+
+-- 상시 공시 --------------------------------------------------------------------
+
+testRegulatorSees : Script ()
+testRegulatorSees = do
+  s@Setup{alice, sec} <- setup
+
+  _ <- issue s alice 100.0
+
+  [(_, d)] <- query @RegulatedDeposit sec
+  d.owner === alice
+  d.amount === 100.0
+
+testStrangerSeesNothing : Script ()
+testStrangerSeesNothing = do
+  s@Setup{alice, david} <- setup
+
+  _ <- issue s alice 100.0
+
+  seen <- query @RegulatedDeposit david
+  seen === []
+
+testRegulatorSeesTransfer : Script ()
+testRegulatorSeesTransfer = do
+  s@Setup{alice, bob, sec} <- setup
+
+  cid <- issue s alice 100.0
+
+  proposalCid <- submit alice do
+    exerciseCmd cid ProposeTransfer with newOwner = bob
+
+  proposals <- query @TransferProposal sec
+  length proposals === 1
+
+  _ <- submit bob do exerciseCmd proposalCid AcceptTransfer
+
+  [(_, d)] <- query @RegulatedDeposit sec
+  d.owner === bob
+
+-- Observer 는 권한이 아니다 -------------------------------------------------------
+
+testRegulatorCannotTransfer : Script ()
+testRegulatorCannotTransfer = do
+  s@Setup{alice, bob, sec} <- setup
+
+  cid <- issue s alice 100.0
+
+  submitMustFail sec do
+    exerciseCmd cid ProposeTransfer with newOwner = bob
+
+testRegulatorCannotArchive : Script ()
+testRegulatorCannotArchive = do
+  s@Setup{alice, sec} <- setup
+
+  cid <- issue s alice 100.0
+
+  submitMustFail sec do
+    archiveCmd cid
+
+testStrangerCannotFreeze : Script ()
+testStrangerCannotFreeze = do
+  s@Setup{alice, david} <- setup
+
+  cid <- issue s alice 100.0
+
+  submitMustFail david do
+    exerciseCmd cid Freeze
+
+-- 명시된 권한만 행사할 수 있다 --------------------------------------------------
+
+testRegulatorFreezes : Script ()
+testRegulatorFreezes = do
+  s@Setup{alice, sec} <- setup
+
+  cid <- issue s alice 100.0
+
+  frozenCid <- submit sec do
+    exerciseCmd cid Freeze
+
+  Some d <- queryContractId alice frozenCid
+  d.frozen === True
+
+testFrozenCannotTransfer : Script ()
+testFrozenCannotTransfer = do
+  s@Setup{alice, bob, sec} <- setup
+
+  cid <- issue s alice 100.0
+
+  frozenCid <- submit sec do exerciseCmd cid Freeze
+
+  submitMustFail alice do
+    exerciseCmd frozenCid ProposeTransfer with newOwner = bob
+
+testUnfreezeRestores : Script ()
+testUnfreezeRestores = do
+  s@Setup{alice, bob, sec} <- setup
+
+  cid <- issue s alice 100.0
+
+  frozenCid <- submit sec do exerciseCmd cid Freeze
+  liveCid <- submit sec do exerciseCmd frozenCid Unfreeze
+
+  _ <- submit alice do
+    exerciseCmd liveCid ProposeTransfer with newOwner = bob
+
+  proposals <- query @TransferProposal alice
+  length proposals === 1
+
+testOwnerCannotFreeze : Script ()
+testOwnerCannotFreeze = do
+  s@Setup{alice} <- setup
+
+  cid <- issue s alice 100.0
+
+  submitMustFail alice do
+    exerciseCmd cid Freeze
+
+-- 선택적 공시 -------------------------------------------------------------------
+
+testAuditorSeesNothingBefore : Script ()
+testAuditorSeesNothingBefore = do
+  s@Setup{alice, auditor} <- setup
+
+  _ <- issue s alice 100.0
+
+  seen <- query @RegulatedDeposit auditor
+  seen === []
+
+testPublishAddsAuditor : Script ()
+testPublishAddsAuditor = do
+  s@Setup{alice, auditor, sec} <- setup
+
+  cid <- issue s alice 100.0
+
+  _ <- submit alice do
+    exerciseCmd cid Publish with auditor
+
+  seen <- query @AuditedDeposit auditor
+  length seen === 1
+
+  regulatorSees <- query @AuditedDeposit sec
+  length regulatorSees === 1
+
+testUnpublishHidesFuture : Script ()
+testUnpublishHidesFuture = do
+  s@Setup{alice, auditor} <- setup
+
+  cid <- issue s alice 100.0
+
+  auditedCid <- submit alice do
+    exerciseCmd cid Publish with auditor
+
+  _ <- submit alice do
+    exerciseCmd auditedCid Unpublish
+
+  stillAudited <- query @AuditedDeposit auditor
+  stillAudited === []
+
+  deposits <- query @RegulatedDeposit auditor
+  deposits === []
