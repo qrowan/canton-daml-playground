@@ -58,7 +58,7 @@ Citi 가 Alice 에게 토큰화 예금 100 을 발행합니다. Alice 가 그것
 
 ---
 
-## 1. Node — 누가 서버를 돌리는가
+## 1. 서버 운영자
 
 거래가 시작되기 전에 노드들이 존재합니다.
 
@@ -134,7 +134,7 @@ Citi 가 Alice 에게 토큰화 예금 100 을 발행합니다. Alice 가 그것
 
 ---
 
-## 2. Identity — 누가 거래의 주체인가
+## 2. 거래의 주체
 
 노드가 있다고 거래가 되지 않습니다. **주체**가 필요합니다.
 
@@ -254,7 +254,7 @@ Robinhood 는 첫 번째를 극단적으로 씁니다 — Participant 하나에 
 
 ---
 
-## 3. Code — 무엇을 Contract 라 부를지 합의한다
+## 3. 계약(Contract)과 템플릿(Template)
 
 주체가 있어도 아직 거래할 수 없습니다. **양쪽이 같은 코드에 합의**해야 합니다.
 
@@ -376,9 +376,9 @@ tokenized-deposit-1.0.0.dar
 
 ---
 
-## 4. Transaction — 실제로 무슨 일이 일어나는가
+## 4. 거래(Transaction)
 
-### 발행 — 왜 한 번에 안 되는가
+### 발행
 
 예금 Contract 의 Signatory 는 Citi 와 Alice **둘 다**입니다. 그런데 Transaction 은 한
 Participant 가 제출합니다. Alice 는 Citi 고객이라 `citi-participant` 가 양쪽을 다
@@ -402,7 +402,7 @@ Alice 가 Morgan Stanley 고객이었다면 불가능합니다. 어느 Participa
 **Choice 를 행사하면 그 Contract 의 Signatory 권한이 실립니다.** Daml 권한 모델의 핵심
 기계장치이고, 두 시점에 나뉘어 있던 동의가 하나의 Transaction 에서 결합됩니다.
 
-### 이체 — 확인 프로토콜
+### 이체
 
 Alice 가 Bob 에게 이체합니다. 이제 두 Participant 가 관여합니다.
 
@@ -463,7 +463,7 @@ Interpretation error: node NodeId(0) (9f49956106...:Deposit:Deposit)
 
 ---
 
-## 5. Privacy — 누가 무엇을 보는가
+## 5. Privacy
 
 Alice → Bob 이체를 누가 아는지 봅니다.
 
