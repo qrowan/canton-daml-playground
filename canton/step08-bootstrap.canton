@@ -1,0 +1,76 @@
+nodes.local.start()
+
+val dtcc = bootstrap.synchronizer(
+  synchronizerName = "dtcc",
+  sequencers = Seq(dtccSequencer),
+  mediators = Seq(dtccMediator),
+  synchronizerOwners = Seq(dtccSequencer),
+  synchronizerThreshold = PositiveInt.one,
+  staticSynchronizerParameters = StaticSynchronizerParameters.defaults(dtccSequencer.config.crypto, ProtocolVersion.latest),
+)
+
+val euroclear = bootstrap.synchronizer(
+  synchronizerName = "euroclear",
+  sequencers = Seq(euroclearSequencer),
+  mediators = Seq(euroclearMediator),
+  synchronizerOwners = Seq(euroclearSequencer),
+  synchronizerThreshold = PositiveInt.one,
+  staticSynchronizerParameters = StaticSynchronizerParameters.defaults(euroclearSequencer.config.crypto, ProtocolVersion.latest),
+)
+
+citi.synchronizers.connect_local(dtccSequencer, alias = "dtcc")
+citi.synchronizers.connect_local(euroclearSequencer, alias = "euroclear")
+goldmansachs.synchronizers.connect_local(dtccSequencer, alias = "dtcc")
+goldmansachs.synchronizers.connect_local(euroclearSequencer, alias = "euroclear")
+
+// unassign 과 assign 사이의 구간을 눈으로 볼 수 있게 늘립니다. 기본값은 15초이고,
+// 이 시간이 지나면 Canton 이 자동으로 assign 합니다.
+val exclusivity = com.digitalasset.canton.config.NonNegativeFiniteDuration.ofMinutes(10)
+dtccSequencer.topology.synchronizer_parameters.propose_update(
+  dtcc.logical,
+  _.update(assignmentExclusivityTimeout = exclusivity),
+)
+euroclearSequencer.topology.synchronizer_parameters.propose_update(
+  euroclear.logical,
+  _.update(assignmentExclusivityTimeout = exclusivity),
+)
+
+import com.digitalasset.canton.topology.transaction.SynchronizerTrustCertificate.ParticipantTopologyFeatureFlag
+
+Seq(citi, goldmansachs).foreach { p =>
+  Seq(dtcc.logical, euroclear.logical).foreach { s =>
+    p.topology.synchronizer_trust_certificates.propose(
+      participantId = p.id,
+      synchronizerId = s,
+      featureFlags = Seq(ParticipantTopologyFeatureFlag.EnableMultiSynchronizer),
+    )
+  }
+}
+
+val dar = sys.env.getOrElse("STEP08_DAR", "")
+if (dar.nonEmpty) {
+  Seq(citi, goldmansachs).foreach { p =>
+    Seq(dtcc.logical, euroclear.logical).foreach { s =>
+      p.dars.upload(dar, synchronizerId = Some(s))
+    }
+  }
+}
+
+val dtccAlias = SynchronizerAlias.tryCreate("dtcc")
+val euroclearAlias = SynchronizerAlias.tryCreate("euroclear")
+
+val citiParty = citi.parties.enable("Citi", synchronizer = Some(dtccAlias))
+val aliceParty = citi.parties.enable("Alice", synchronizer = Some(dtccAlias))
+val gsParty = goldmansachs.parties.enable("GoldmanSachs", synchronizer = Some(dtccAlias))
+
+citi.parties.enable("Citi", synchronizer = Some(euroclearAlias))
+citi.parties.enable("Alice", synchronizer = Some(euroclearAlias))
+goldmansachs.parties.enable("GoldmanSachs", synchronizer = Some(euroclearAlias))
+
+println("=== READY ===")
+println("DTCC=" + dtcc.logical.toProtoPrimitive)
+println("EUROCLEAR=" + euroclear.logical.toProtoPrimitive)
+println("EXCLUSIVITY=" + exclusivity.toString)
+println("CITI=" + citiParty.toProtoPrimitive)
+println("ALICE=" + aliceParty.toProtoPrimitive)
+println("GS=" + gsParty.toProtoPrimitive)

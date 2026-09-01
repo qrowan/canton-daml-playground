@@ -17,10 +17,11 @@ Step 을 순서대로 거치면서 그 목표에 도달합니다. 각 Step 은 *
 | 05 | [다중 Participant](steps/Step05MultiParticipant.md) | `step05.sh` | 노드 4개 직접 기동. 데이터 격리·vetting·노드 간 이체 |
 | 06 | [DvP](steps/Step06Dvp.md) | `step06.sh` | 증권 ↔ 현금 원자적 교환. 중첩 exercise 로 권한 흐름 |
 | 07 | [공시와 감사](steps/Step07Disclosure.md) | `step07.sh` | Observer. 가시성과 권한의 분리, 감독기관 개입 |
+| 08 | [Reassignment](steps/Step08Reassignment.md) | `step08.sh` | Synchronizer 2개. Contract 를 원장 사이로 옮겨 결제 |
 
 시나리오는 하나로 이어집니다 — **Citi 가 Alice 에게 토큰화 예금을 발행하고, Alice 가
-Bob 에게 이체하고, Bob 이 Goldman Sachs 의 채권과 교환합니다.** 등장 인물은 Step 01 에
-정의되어 있습니다.
+Bob 에게 이체하고, Bob 이 Goldman Sachs 의 채권과 교환합니다. 마지막에는 현금과 증권이
+서로 다른 원장에 있는 상황을 다룹니다.** 등장 인물은 Step 01 에 정의되어 있습니다.
 
 ## 사전 준비
 
@@ -101,7 +102,7 @@ Successfully installed SDK 3.5.5
 | --- | --- |
 | (없음) | 단계마다 엔터를 기다린다 |
 | `--auto` | 엔터 없이 전부 실행 |
-| `--keep` | 끝나고 노드를 끄지 않는다 (Step 02, 05) |
+| `--keep` | 끝나고 노드를 끄지 않는다 (Step 02, 05, 08) |
 
 러너를 먼저 돌리고 해당 Step 문서를 읽는 순서를 권합니다. 문서에는 러너가 보여준 것의
 의미와 남겨야 할 결론이 정리되어 있습니다.
@@ -157,7 +158,7 @@ export JAVA_HOME=/path/to/jdk-21
 export PATH="$JAVA_HOME/bin:$HOME/.dpm/bin:$PATH"
 ```
 
-### Step 05 가 `canton jar 을 찾을 수 없습니다` 로 멈춘다
+### Step 05 · 08 이 `canton jar 을 찾을 수 없습니다` 로 멈춘다
 
 DPM 캐시에서 자동으로 찾지만 못 찾으면 직접 지정합니다.
 
@@ -182,7 +183,7 @@ export CANTON_JAR=/path/to/canton-open-source-*.jar
 ```
 steps/            학습 문서 + 러너 스크립트
 daml/             Daml 소스 — daml.yaml 의 source 루트
-canton/           Canton 노드 설정과 bootstrap 스크립트 (Step 05~)
+canton/           Canton 노드 설정과 bootstrap 스크립트 (Step 05, 08)
 env.sh            로컬 환경 (gitignore)
 ```
 

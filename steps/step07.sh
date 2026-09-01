@@ -249,7 +249,7 @@ cat <<SUMMARY
   선택적 공시          Observer 추가도 archive + create. Contract ID 가 바뀐다
   되돌릴 수 없다       Unpublish 는 앞으로만 막는다. 본 것은 지우지 못한다
 
-  ${B}다음${R}  Step 08 — Synchronizer. 여러 Synchronizer 와 Reassignment 로
-        Contract 가 원장 사이를 이동하는 것을 다룹니다.
+  ${B}다음${R}  Step 08 — Reassignment. Synchronizer 를 둘 띄우고 Contract 를
+        원장 사이로 옮겨 결제를 성립시킵니다. Daml 코드는 고치지 않습니다.
 
 SUMMARY

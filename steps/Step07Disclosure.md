@@ -197,10 +197,10 @@ Observer 를 더하는 것도 archive + create 이고, **Contract ID 가 바뀝�
 보이지 않습니다. [Step 05](Step05MultiParticipant.md) 의 구성에 `sec` participant 를
 추가하면 확인할 수 있습니다.
 
-`canton/canton.conf` 에 participant 를 하나 더 선언하고 `bootstrap.canton` 에서
+`canton/step05.conf` 에 participant 를 하나 더 선언하고 `step05-bootstrap.canton` 에서
 `connect_local` 과 `parties.enable` 을 추가하면 됩니다. Daml 코드는 고칠 것이 없습니다.
 
 ---
 
-다음: **Step 08 — Synchronizer.** 여러 Synchronizer 와 Reassignment 로 Contract 가
-원장 사이를 이동하는 것을 다룹니다.
+다음: **[Step 08 — Reassignment](Step08Reassignment.md).** Synchronizer 를 둘 띄우고
+Contract 를 원장 사이로 옮겨 결제를 성립시킵니다.
