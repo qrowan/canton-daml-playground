@@ -326,28 +326,85 @@ choice Transfer
 > 아니어도 되지만, 볼 수 없으면 실무적으로 행사하기 어렵습니다. Step 04 에서 이 둘을
 > 나눠 쓰는 형태가 나옵니다.
 
+### Module
+
+**Template 이 사는 곳**입니다. 파일 하나가 Module 하나이고, **파일 경로가 그대로
+Module 이름**이 됩니다. 컨벤션이 아니라 컴파일러가 강제합니다.
+
+```
+daml/Step04/Deposit.daml   →   module Step04.Deposit
+```
+
+Module 하나에 Template 여러 개를 담을 수 있습니다. 실무에서는 컨트랙트 이름이 아니라
+도메인이나 워크플로 단위로 묶습니다 — propose/accept 패턴은 Template 두세 개가 항상
+같이 다니기 때문입니다.
+
+### Package
+
+**여러 Module 을 함께 컴파일한 단위**입니다. `daml.yaml` 하나가 Package 하나를
+정의합니다.
+
+```
+daml.yaml
+  name: canton-daml-playground    ← Package 이름
+  version: 0.1.1                  ← Package 버전
+  source: daml                    ← 이 아래의 Module 들이 이 Package 에 들어갑니다
+```
+
+**Package 는 배포와 vetting 의 단위**입니다. Template 하나만 따로 올릴 수 없고, 그
+Template 이 속한 Package 를 통째로 올립니다.
+
+이름과 버전은 사람이 정합니다. 잠시 뒤 나올 **Package ID 와는 다른 것**입니다.
+
 ### DAR
 
-**컴파일 결과물을 담은 배포 단위**입니다. Java 의 `.jar` 에 해당하는 zip 파일입니다.
+**Package 들을 담은 배포 파일**입니다. Java 의 `.jar` 에 해당하는 zip 파일입니다.
 
 ```
 tokenized-deposit-1.0.0.dar
-  ├── tokenized-deposit-9f49956106...dalf   ← 컴파일된 바이트코드
+  ├── tokenized-deposit-9f49956106...dalf   ← 내가 만든 Package
   ├── daml-prim-590736e6...dalf              ← 의존 Package 들
   ├── daml-stdlib-....dalf
   └── Deposit.daml                            ← 원본 소스도 함께 (감사용)
 ```
 
+`.dalf` 파일 하나가 Package 하나입니다. DAR 은 내 Package 와 그것이 의존하는 Package
+들을 한 파일로 묶어, 상대 Participant 가 이것만 받으면 검증할 수 있게 합니다.
+
 ### Package ID
 
-**`.dalf` 내용의 SHA-256 해시**입니다. 파일명 뒤 64자가 그것입니다.
+**Package 하나(`.dalf`)의 내용을 SHA-256 으로 해시한 값**입니다. 파일명 뒤 64자가
+그것입니다.
 
 ```
 9f49956106444057a69883e614389847969359465ba998c746784578303032fc
 ```
 
-코드가 1바이트만 바뀌어도 달라집니다. Transaction 은 이 해시로 Template 을 지목하므로
-**누가 몰래 다른 로직으로 바꿔치기할 수 없습니다.**
+Transaction 은 Template 을 이렇게 지목합니다. 러너가 Contract 를 만들 때 넘기는
+`templateId` 가 이 형식입니다.
+
+```
+9f49956106...:Step04.Deposit:Deposit
+```
+
+| 조각 | 뜻 |
+| --- | --- |
+| `9f49956106...` | Package ID |
+| `Step04.Deposit` | Module 이름 |
+| `Deposit` | Template 이름 |
+
+이름과 버전이 아니라 **해시로** 지목한다는 점이 중요합니다. 코드가 1바이트만 바뀌어도
+달라지므로 **누가 몰래 다른 로직으로 바꿔치기할 수 없습니다.**
+
+> **❓ Package 이름·버전과 Package ID 는 왜 따로 있나요?**
+>
+> 이름과 버전은 **사람이 정하는 것**이고, Package ID 는 **내용에서 나오는 것**입니다.
+>
+> 이름이 같고 버전이 높으면 후속 버전으로 취급됩니다. 그런데 Package ID 는 완전히
+> 다른 값이므로, 원장에 있는 옛 Contract 는 여전히 옛 Package ID 를 가리킨 채
+> 남습니다. 새 버전을 올려도 옛 Contract 가 사라지지 않는 이유입니다.
+>
+> Step 09 에서 이 셋을 구분해 쓰는 형태가 나옵니다.
 
 ### Vetting
 
@@ -556,9 +613,12 @@ EVM 을 알고 오면 찾게 되지만 없는 것들입니다.
 | 용어 | 한 줄 정의 |
 | --- | --- |
 | **Daml** | Contract 를 기술하는 언어 |
-| **DAR** | 컴파일 결과물 zip. `.dalf` 여러 개 + 원본 소스 |
-| **DALF** | 컴파일된 Package 하나 |
-| **Package ID** | `.dalf` 내용의 SHA-256 해시. Template 을 지목하는 식별자 |
+| **Module** | Template 이 사는 곳. 파일 경로가 곧 이름 |
+| **Package** | 함께 컴파일한 Module 들의 묶음. `daml.yaml` 하나가 Package 하나 |
+| **Package name / version** | 사람이 정하는 Package 의 이름과 버전. 후속 버전 판별에 씁니다 |
+| **DAR** | 배포 파일 zip. `.dalf` 여러 개 + 원본 소스 |
+| **DALF** | Package 하나가 담긴 파일 |
+| **Package ID** | Package 내용의 SHA-256 해시. Template 을 지목하는 식별자 |
 | **Vetting** | Participant 가 "이 Package ID 를 쓰겠다"고 Topology 에 공표 |
 
 ### 프로토콜
@@ -589,13 +649,15 @@ EVM 을 알고 오면 찾게 되지만 없는 것들입니다.
 8. `Alice` 와 `Charlie` 의 차이는 무엇입니까?
 9. Alice 를 Morgan Stanley 노드로 이관하면 Party ID 는 어떻게 됩니까?
 10. Participant 가 저장하는 "state" 는 무엇입니까?
+11. Package 이름과 Package ID 중 코드를 고치면 바뀌는 것은 무엇입니까?
 
 > 답: 1. 못 봅니다, 데이터가 도달하지 않습니다 · 2. `Alice` · 3. 못 봅니다, Envelope
 > 만 봅니다 · 4. 못 옮깁니다, 그 행위가 존재하지 않습니다 · 5. 그 코드로는 거래 자체가
 > 성립하지 않습니다 · 6. 기존 Contract 가 소비되고 새 ID 가 생깁니다 · 7. 못 만듭니다,
 > propose/accept 가 필요합니다 · 8. Namespace 키를 발급 Participant 가 쥐는가 본인이
 > 쥐는가 · 9. 그대로입니다, Namespace 는 발급 이력이고 호스팅은 별개의 매핑입니다 ·
-> 10. 활성 Contract 들의 집합(ACS)입니다. Contract 와 별개의 state 는 없습니다
+> 10. 활성 Contract 들의 집합(ACS)입니다. Contract 와 별개의 state 는 없습니다 ·
+> 11. Package ID 입니다. 이름과 버전은 사람이 정하므로 그대로 둘 수 있습니다
 
 ---
 
