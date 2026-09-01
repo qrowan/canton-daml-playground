@@ -331,5 +331,5 @@ Reassignment 두 개가 없습니다. `Cash` 의 stakeholder 는 Citi 와 Alice 
 
 ---
 
-다음: **Step 09 — 업그레이드.** 이미 배포된 Template 을 고쳐야 할 때 무엇이 일어나는지
-다룹니다.
+다음: **[Step 09 — 업그레이드](Step09Upgrade.md).** 이미 배포된 Template 을 고쳐야 할 때
+무엇이 일어나는지 다룹니다.

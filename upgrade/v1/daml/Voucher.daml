@@ -1,0 +1,42 @@
+{-
+
+================================================================================
+ Step 09 v1 — 상품권
+================================================================================
+
+Citi 가 발행하고 고객이 사용하는 상품권이다. 이 Step 의 주제는 발행 절차가
+아니라 배포된 뒤의 버전 관리이므로 템플릿은 최소한으로 둔다.
+
+
+■ signatory 가 발행사 하나뿐인 이유
+
+  Step 02~04 의 Deposit 은 은행과 고객 양쪽이 서명했다. 예금은 양쪽의 채권
+  채무 관계이기 때문이다.
+
+  상품권은 발행사가 일방적으로 지는 채무다. 소지자는 서명하지 않고 받기만
+  한다. 그래서 signatory 는 issuer 하나이고 owner 는 observer 다.
+
+  덕분에 발행사 혼자 한 Transaction 으로 발행할 수 있다. 소지자가 다른
+  Participant 에 있어도 propose/accept 가 필요 없다. 11단계에서 이 성질을
+  쓴다.
+
+================================================================================
+-}
+
+module Voucher where
+
+template Voucher
+  with
+    issuer : Party
+    owner : Party
+    amount : Decimal
+  where
+    signatory issuer
+    observer owner
+
+    ensure amount > 0.0
+
+    choice Redeem : ()
+      controller owner
+      do
+        pure ()

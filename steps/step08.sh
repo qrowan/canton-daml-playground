@@ -636,6 +636,9 @@ cat <<SUMMARY
   Reassignment 가 상대 Participant 의 연결에 막히는 경우
   원장 사이의 시간·순서 관계
 
+  ${B}다음${R}  Step 09 — 업그레이드. 이미 배포된 Template 을 고쳐야 할 때
+        무엇이 일어나는지 다룹니다.
+
 SUMMARY
 
 if [ "$KEEP" = 1 ]; then

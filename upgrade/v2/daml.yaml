@@ -1,0 +1,12 @@
+sdk-version: 3.5.5
+name: step09-voucher
+source: daml
+version: 2.0.0
+
+# 이 패키지가 무엇의 후속 버전인지 컴파일러에게 알려줍니다. 여기를 채워야
+# 업그레이드 규칙 검사가 돌아갑니다. 비워 두면 그냥 이름이 같은 남남입니다.
+upgrades: ../v1/.daml/dist/step09-voucher-1.0.0.dar
+
+dependencies:
+  - daml-prim
+  - daml-stdlib

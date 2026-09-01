@@ -1,0 +1,65 @@
+{-
+
+================================================================================
+ Step 09 v2 — 상품권에 유효기간을 붙인다
+================================================================================
+
+v1 과 같은 package name 이고 version 만 올렸다. daml.yaml 의 upgrades 가
+v1 의 DAR 을 가리키므로 컴파일러가 두 버전을 비교해 규칙을 검사한다.
+
+
+■ v1 에서 바꾼 것
+
+  expiresAt : Optional Time     새 필드. Optional 이고 맨 뒤에 붙였다
+  Redeem                        만료 검사를 넣었다
+  SetExpiry                     새 Choice
+
+
+■ 새 필드가 Optional 이어야 하는 이유
+
+  v1 시절에 만들어진 Contract 에는 그 필드가 없다. 원장에 저장된 값을 고칠
+  방법이 없으므로, 없는 값을 채울 수 있는 타입이어야 한다. Optional 의
+  None 이 그 자리를 메운다.
+
+  맨 뒤여야 하는 이유도 같다. 중간에 끼우면 기존 필드의 위치가 밀린다.
+
+
+■ Redeem 에서 None 을 "무기한" 으로 다루는 이유
+
+  v1 시절 Contract 는 expiresAt 이 None 으로 읽힌다. 만약 None 을 만료로
+  다뤘다면 그 Contract 들은 전부 사용 불가가 된다.
+
+  옛 Contract 도 새 코드로 실행된다. 새 필드의 None 을 어떻게 다룰지가
+  옛 Contract 의 운명을 정한다.
+
+================================================================================
+-}
+
+module Voucher where
+
+template Voucher
+  with
+    issuer : Party
+    owner : Party
+    amount : Decimal
+    expiresAt : Optional Time
+  where
+    signatory issuer
+    observer owner
+
+    ensure amount > 0.0
+
+    choice Redeem : ()
+      controller owner
+      do
+        now <- getTime
+        case expiresAt of
+          None -> pure ()
+          Some deadline -> assertMsg "상품권이 만료되었습니다" (now <= deadline)
+
+    choice SetExpiry : ContractId Voucher
+      with
+        deadline : Time
+      controller issuer
+      do
+        create this with expiresAt = Some deadline
