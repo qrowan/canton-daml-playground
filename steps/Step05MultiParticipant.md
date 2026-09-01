@@ -45,8 +45,8 @@ Step 01 에서 그림으로만 봤던 구성입니다.
 
 | 파일 | 내용 |
 | --- | --- |
-| `canton/canton.conf` | 노드 4개 선언 |
-| `canton/bootstrap.canton` | Synchronizer 구성, 노드 연결, DAR 업로드, Party 생성 |
+| `canton/step05.conf` | 노드 4개 선언 |
+| `canton/step05-bootstrap.canton` | Synchronizer 구성, 노드 연결, DAR 업로드, Party 생성 |
 | `steps/step05.sh` | 12단계 러너 |
 
 Daml 코드는 Step 04 의 `daml/Step04/Deposit.daml` 을 그대로 씁니다. **코드를 한 줄도
@@ -242,7 +242,7 @@ propose/accept 로 짜 두었기 때문에 노드가 분리돼도 그대로 동�
 끝나면 출력된 변수와 포트를 씁니다. Canton 콘솔로 노드에 직접 붙을 수도 있습니다.
 
 ```sh
-java -jar "$CANTON_JAR" sandbox-console -c canton/canton.conf
+java -jar "$CANTON_JAR" sandbox-console -c canton/step05.conf
 ```
 
 `CANTON_JAR` 은 러너가 `--keep` 으로 끝날 때 출력해 줍니다. 직접 찾으려면:

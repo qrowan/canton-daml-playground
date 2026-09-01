@@ -61,6 +61,17 @@ run() { printf '%s$ %s%s\n\n' "$YE" "$1" "$R"; eval "$1"; }
 
 jq_() { python3 -c "import sys,json; d=json.load(sys.stdin); $1"; }
 
+# 응답 하나를 사람이 읽을 수 있게 출력합니다. 성공 응답에는 code 필드가 없습니다.
+result() {
+  jq_ '
+if d.get("code"):
+    print("  실패  " + d["code"])
+    print("  cause:", d.get("cause", "")[:200])
+else:
+    print("  성공  updateId:", d.get("updateId", "")[:24])
+'
+}
+
 printf '%s\n' "$B"
 cat <<'BANNER'
  Step 05 — 다중 Participant
@@ -102,12 +113,12 @@ mkdir -p "$WORK"
 
 cleanup() {
   if [ "$KEEP" = 1 ]; then
-    printf '\n%s 노드를 계속 실행 중입니다. 끄려면: pkill -f 'daemon -c canton/canton.conf'%s\n' "$DIM" "$R"
+    printf '\n%s 노드를 계속 실행 중입니다. 끄려면: pkill -f 'daemon -c canton/step05.conf'%s\n' "$DIM" "$R"
     return
   fi
   printf '\n%s 노드 종료 중...%s\n' "$DIM" "$R"
   [ -n "${CANTON_PID:-}" ] && kill "$CANTON_PID" 2>/dev/null
-  pkill -f 'daemon -c canton/canton.conf' 2>/dev/null
+  pkill -f 'daemon -c canton/step05.conf' 2>/dev/null
   true
 }
 trap cleanup EXIT
@@ -118,7 +129,7 @@ title "설정 파일 — 노드를 직접 선언한다"
 say "dpm sandbox 는 노드 구성을 감춰 놓았습니다. 여기서는 직접 씁니다."
 pause
 
-run "cat canton/canton.conf"
+run "cat canton/step05.conf"
 
 printf '\n'
 say "Participant 마다 포트가 세 벌입니다."
@@ -138,7 +149,7 @@ say "노드를 띄우는 것만으로는 부족합니다. Synchronizer 를 만�
 say "거기에 연결해야 합니다."
 pause
 
-run "cat canton/bootstrap.canton"
+run "cat canton/step05-bootstrap.canton"
 
 printf '\n'
 say "${B}bootstrap.synchronizer${R} 가 Sequencer 와 Mediator 를 묶어 Synchronizer 를"
@@ -158,9 +169,9 @@ DAR=$(ls -t .daml/dist/*.dar 2>/dev/null | head -1)
 ok "DAR: $DAR"
 
 # 이전 실행이 남아 있으면 포트를 붙잡고 있다. 완전히 사라질 때까지 기다린다.
-pkill -f 'daemon -c canton/canton.conf' 2>/dev/null
+pkill -f 'daemon -c canton/' 2>/dev/null
 for _ in $(seq 1 30); do
-  pgrep -f 'daemon -c canton/canton.conf' >/dev/null 2>&1 || break
+  pgrep -f 'daemon -c canton/' >/dev/null 2>&1 || break
   sleep 1
 done
 for _ in $(seq 1 30); do
@@ -168,9 +179,9 @@ for _ in $(seq 1 30); do
   sleep 1
 done
 
-printf '%s$ java -jar canton.jar daemon -c canton/canton.conf --bootstrap canton/bootstrap.canton%s\n\n' "$YE" "$R"
+printf '%s$ java -jar canton.jar daemon -c canton/step05.conf --bootstrap canton/step05-bootstrap.canton%s\n\n' "$YE" "$R"
 STEP05_DAR="$ROOT/$DAR" nohup java -jar "$CANTON_JAR" daemon \
-  -c canton/canton.conf --bootstrap canton/bootstrap.canton --no-tty > "$LOG" 2>&1 &
+  -c canton/step05.conf --bootstrap canton/step05-bootstrap.canton --no-tty > "$LOG" 2>&1 &
 CANTON_PID=$!
 
 printf '기동 대기'
@@ -186,7 +197,7 @@ if [ "$READY" != 1 ]; then
   grep -iE "Failed to bind|Address already in use" "$LOG" | head -3
   tail -15 "$LOG"
   die "기동 실패. 포트 5001~5003, 5011~5013, 5021~5023 이 비어 있는지 확인하세요:
-    pkill -f 'daemon -c canton/canton.conf'"
+    pkill -f 'daemon -c canton/step05.conf'"
 fi
 
 CITI=$(grep '^CITI='  "$LOG" | tail -1 | cut -d= -f2)
@@ -335,7 +346,7 @@ submit_cmd() { # $1=api $2=userId $3=actAs(json array) $4=commands(json)
 
 CREATE="[{\"CreateCommand\":{\"templateId\":\"$DEP\",\"createArguments\":{\"bank\":\"$CITI\",\"owner\":\"$ALICE\",\"amount\":\"100.0\"}}}]"
 submit_cmd "$CITI_API" citi-settlement "[\"$CITI\",\"$ALICE\"]" "$CREATE" \
-  | jq_ 'print("  updateId:", d.get("updateId","(없음)")[:24], " code:", d.get("code","-"))'
+  | result
 
 ok "Alice 의 예금 100 이 생성되었습니다"
 
@@ -386,7 +397,7 @@ printf '%s$ morganstanley 노드에서 Alice 권한으로 제출 시도%s\n\n' "
 submit_probe="[{\"CreateCommand\":{\"templateId\":\"$PKG:Step04.Deposit:Deposit\",\"createArguments\":{\"bank\":\"$CITI\",\"owner\":\"$ALICE\",\"amount\":\"1.0\"}}}]"
 curl -s -X POST "$MS_API/v2/commands/submit-and-wait" -H 'Content-Type: application/json' \
   -d "{\"commands\":$submit_probe,\"commandId\":\"s05-probe\",\"userId\":\"bob-web\",\"actAs\":[\"$ALICE\"],\"readAs\":[]}" \
-  | jq_ 'print("  code :", d.get("code","(성공)")); print("  cause:", d.get("cause","")[:170])'
+  | result
 
 printf '\n'
 warn "morganstanley 노드는 Alice 를 호스팅하지 않으므로 Alice 로 제출할 수 없습니다."
@@ -405,7 +416,7 @@ say "먼저 편법을 시도해 봅니다 — citi 노드에서 actAs 에 Bob �
 printf '\n'
 BADCREATE="[{\"CreateCommand\":{\"templateId\":\"$DEP\",\"createArguments\":{\"bank\":\"$CITI\",\"owner\":\"$BOB\",\"amount\":\"50.0\"}}}]"
 submit_cmd "$CITI_API" citi-settlement "[\"$CITI\",\"$BOB\"]" "$BADCREATE" \
-  | jq_ 'print("  code :", d.get("code","(성공)")); print("  cause:", d.get("cause","")[:160])'
+  | result
 
 printf '\n'
 ok "거부되었습니다. citi 노드는 Bob 의 권한을 행사할 수 없습니다"
@@ -418,7 +429,7 @@ ALICE_DEP=$(wait_contract "$CITI_API" "$ALICE" Deposit) || die "Alice 의 예금
 printf '%s$ TX 1 — citi 노드에서 Alice 가 ProposeTransfer%s\n\n' "$YE" "$R"
 PROP="[{\"ExerciseCommand\":{\"templateId\":\"$DEP\",\"contractId\":\"$ALICE_DEP\",\"choice\":\"ProposeTransfer\",\"choiceArgument\":{\"newOwner\":\"$BOB\"}}}]"
 submit_cmd "$CITI_API" alice-web "[\"$ALICE\"]" "$PROP" \
-  | jq_ 'print("  updateId:", d.get("updateId","-")[:24], " code:", d.get("code","-"))'
+  | result
 
 printf '\n'
 say "제안이 만들어졌습니다. Bob 이 Observer 이므로 ${B}morganstanley 노드에도 도달${R}합니다."
@@ -446,7 +457,7 @@ TPROP="$PKG:Step04.Deposit:TransferProposal"
 ACC="[{\"ExerciseCommand\":{\"templateId\":\"$TPROP\",\"contractId\":\"$PROP_CID\",\"choice\":\"AcceptTransfer\",\"choiceArgument\":{}}}]"
 printf '%s$ POST %s/v2/commands/submit-and-wait   (userId=bob-web)%s\n\n' "$YE" "$MS_API" "$R"
 submit_cmd "$MS_API" bob-web "[\"$BOB\"]" "$ACC" \
-  | jq_ 'print("  updateId:", d.get("updateId","-")[:24], " code:", d.get("code","-"))'
+  | result
 
 printf '\n'
 say "결과를 양쪽에서 봅니다."
@@ -506,7 +517,7 @@ if [ "$KEEP" = 1 ]; then
   note "  export PKG=$PKG"
   note "  citi JSON API          $CITI_API"
   note "  morganstanley JSON API $MS_API"
-  note "  Canton 콘솔:  java -jar $CANTON_JAR sandbox-console -c canton/canton.conf"
+  note "  Canton 콘솔:  java -jar $CANTON_JAR sandbox-console -c canton/step05.conf"
 else
   say "노드를 종료합니다. 인메모리이므로 Party·User·Contract 가 모두 사라집니다."
   note "계속 살려두려면: ./steps/step05.sh --keep"

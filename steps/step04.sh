@@ -307,7 +307,7 @@ cat <<SUMMARY
   ${B}남은 문제${R}  지금까지는 전부 participant 하나에서 확인했습니다.
               "노드가 분리돼도 동작합니다"는 아직 말뿐입니다.
 
-  ${B}다음${R}  Step 05 — canton.conf 로 노드 4개(participant 2, sequencer,
+  ${B}다음${R}  Step 05 — step05.conf 로 노드 4개(participant 2, sequencer,
         mediator)를 띄우고 Alice 와 Bob 을 서로 다른 participant 에 두어
         실제로 확인합니다. 여기서 vetting 과 토폴로지가 처음 드러납니다.
 
