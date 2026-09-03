@@ -257,5 +257,5 @@ template Voucher
 
 ---
 
-다음: **Step 10 — 애플리케이션 연동.** ACS 스냅샷과 offset 부터 스트리밍 구독까지,
-원장 위에 애플리케이션을 올리는 배관을 다룹니다.
+다음: **[Step 10 — 애플리케이션 연동](Step10Integration.md).** offset 과 ACS 스냅샷으로
+원장을 따라가는 애플리케이션을 만듭니다.

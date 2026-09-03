@@ -628,6 +628,9 @@ cat <<SUMMARY
   Interface 를 쓴 버전 분리
   multi-package.yaml 로 여러 패키지를 한 번에 빌드하기
 
+  ${B}다음${R}  Step 10 — 애플리케이션 연동. offset 과 ACS 스냅샷으로 원장을
+        따라가는 애플리케이션을 만듭니다.
+
 SUMMARY
 
 if [ "$KEEP" = 1 ]; then
