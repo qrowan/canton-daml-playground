@@ -269,7 +269,7 @@ bank.ledger_api.state.acs.of_party(bank.parties.list().head.party)
 | 다중 호스팅 / threshold | 한 Party 를 두 노드에 두지 않았습니다 |
 | Reassignment | Synchronizer 가 하나입니다 |
 | BFT Sequencer / Mediator group | 각각 하나입니다 |
-| External Party | 모두 Hosted Party 입니다 |
+| External Party | 모두 Hosted Party 입니다 — [Step 11](Step11ExternalParty.md) 에서 다룹니다 |
 | 한쪽만 vetting 했을 때의 거부 | 양쪽에 동시에 올렸습니다 |
 
 ---

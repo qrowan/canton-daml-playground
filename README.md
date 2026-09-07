@@ -20,10 +20,12 @@ Step 을 순서대로 거치면서 그 목표에 도달합니다. 각 Step 은 *
 | 08 | [Reassignment](steps/Step08Reassignment.md) | `step08.sh` | Synchronizer 2개. Contract 를 원장 사이로 옮겨 결제 |
 | 09 | [업그레이드](steps/Step09Upgrade.md) | `step09.sh` | 배포된 Template 의 새 버전. 규칙, vetting, 버전 해석 |
 | 10 | [애플리케이션 연동](steps/Step10Integration.md) | `step10.sh` | offset 과 ACS 스냅샷. 원장을 따라가는 애플리케이션 |
+| 11 | [External Party](steps/Step11ExternalParty.md) | `step11.sh` | 자기 키를 쥔 Party. 온보딩과 prepare/sign/execute |
 
 시나리오는 하나로 이어집니다 — **Bank 가 Alice 에게 토큰화 예금을 발행하고, Alice 가
-Bob 에게 이체하고, Bob 이 Issuer 의 채권과 교환합니다. 마지막에는 현금과 증권이
-서로 다른 원장에 있는 상황을 다룹니다.** 등장 인물은 Step 01 에 정의되어 있습니다.
+Bob 에게 이체하고, Bob 이 Issuer 의 채권과 교환합니다. 그 다음 현금과 증권이 서로 다른
+원장에 있는 상황을 다루고, 마지막에는 자기 키를 쥔 Charlie 가 등장합니다.** 등장
+인물은 Step 01 에 정의되어 있습니다.
 
 ## 사전 준비
 
@@ -104,7 +106,7 @@ Successfully installed SDK 3.5.5
 | --- | --- |
 | (없음) | 단계마다 엔터를 기다린다 |
 | `--auto` | 엔터 없이 전부 실행 |
-| `--keep` | 끝나고 노드를 끄지 않는다 (Step 02, 05, 08, 09, 10) |
+| `--keep` | 끝나고 노드를 끄지 않는다 (Step 02, 05, 08, 09, 10, 11) |
 
 러너를 먼저 돌리고 해당 Step 문서를 읽는 순서를 권합니다. 문서에는 러너가 보여준 것의
 의미와 남겨야 할 결론이 정리되어 있습니다.
