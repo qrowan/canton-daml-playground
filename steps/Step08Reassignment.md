@@ -1,11 +1,41 @@
 # Step 08 — Reassignment
 
 [Step 06](Step06Dvp.md) 의 DvP 는 현금과 채권이 같은 원장에 있다고 전제했습니다.
-실무에서는 그렇지 않습니다. 현금은 자금 결제망에, 증권은 예탁결제망에 있고 둘은 서로
-다른 원장입니다.
+실무에서는 자산이 서로 다른 원장에 놓이는 일이 흔합니다.
 
 Canton 에서 원장 하나는 **Synchronizer 하나**입니다. 이 Step 에서는 Synchronizer 를
 둘 띄우고, Contract 를 원장 사이로 옮겨 결제를 성립시킵니다.
+
+## 원장은 왜 갈리는가
+
+먼저 짚어야 할 것이 있습니다. **Synchronizer 는 자산 종류로 나뉘지 않습니다.**
+[Step 01](Step01Terminology.md) 에서 확인했듯 Sequencer 는 봉투 겉면만 보고 Mediator 는
+해시만 봅니다. 그 안에 현금이 있는지 증권이 있는지 알 수가 없습니다. "현금 원장" 이라는
+것은 프로토콜에 존재하지 않습니다.
+
+경계를 정하는 것은 운영 쪽 요구입니다.
+
+| 이유 | 내용 |
+| --- | --- |
+| 규제 | 특정 관할의 Participant 만 처리하도록 제한 |
+| 성능 | 처리량 높은 흐름을 나눠 경합을 줄임 |
+| 격리 | 특정 거래 흐름을 공용망과 완전히 분리 |
+| 비용 | 공용망 수수료가 과도한 경우 |
+| 거버넌스 | 원하는 운영 모델(중앙형·분산형)을 선택 |
+
+그래서 이 Step 의 두 원장은 **참여 자격과 거버넌스**로 갈라 두었습니다.
+
+```
+public       공용 원장.     누구나 참여하고 여러 주체가 공동 운영합니다
+consortium   컨소시엄 원장.  승인된 회원만 참여하고 회원들이 운영합니다
+```
+
+현금이 `public` 에, 채권이 `consortium` 에 놓이는 것은 **결과**입니다. 증권 쪽이 참여
+자격과 준법 점검을 통제해야 해서 별도 망을 두었고, 그 위에 채권이 올라간 것입니다.
+자산 종류가 원장을 나눈 것이 아닙니다.
+
+같은 원장에 현금과 증권을 함께 둘 수도 있습니다. 공식 문서는 대부분의 애플리케이션에
+Global Synchronizer 하나로 충분하다고 말합니다.
 
 ## 실행
 
@@ -35,21 +65,21 @@ Template 에 Synchronizer 를 적는 자리가 없습니다.
 ## 구성
 
 ```
-    citi-participant                 goldmansachs-participant
-      Citi, Alice                      GoldmanSachs
-         │  │                              │  │
-         │  └──────────┐        ┌──────────┘  │
-         │             │        │             │
-    ┌────┴─────────────┴──┐  ┌──┴─────────────┴────┐
-    │   dtcc              │  │   euroclear         │
-    │   Sequencer 5001    │  │   Sequencer 5004    │
-    │   Mediator  5003    │  │   Mediator  5006    │
-    │   현금 원장          │  │   증권 원장          │
-    └─────────────────────┘  └─────────────────────┘
+    bank-participant       issuer-participant
+      Bank, Alice            Issuer
+          │                      │
+          └── 두 노드가 두 원장에 모두 연결됩니다 ──┘
+
+    ┌──────────────────┐  ┌──────────────────┐
+    │  public          │  │  consortium      │
+    │  Sequencer 5001  │  │  Sequencer 5004  │
+    │  Mediator  5003  │  │  Mediator  5006  │
+    │  누구나 참여     │  │  승인 회원만     │
+    └──────────────────┘  └──────────────────┘
 ```
 
-Participant 는 [Step 05](Step05MultiParticipant.md) 와 같이 둘입니다. Morgan Stanley
-자리에 GoldmanSachs 가 들어온 것은 다루는 자산이 채권이기 때문이고, 구조는 같습니다.
+Participant 는 [Step 05](Step05MultiParticipant.md) 와 같이 둘입니다. Broker 자리에
+Issuer 가 들어온 것은 다루는 자산이 채권이기 때문이고, 구조는 같습니다.
 **실제로 달라지는 변수는 Synchronizer 의 개수 하나뿐입니다.**
 
 ## Step 05 에서 무엇이 달라졌는가
@@ -71,8 +101,8 @@ Participant 는 [Step 05](Step05MultiParticipant.md) 와 같이 둘입니다. Mo
 ACS 항목에는 `synchronizerId` 가 함께 실려 옵니다.
 
 ```
-    활성   Cash          dtcc         001fd9ee505b59fa
-    활성   DvpProposal   euroclear    00c2efd74ea297c1
+    활성   Cash          public         001fd9ee505b59fa
+    활성   DvpProposal   consortium    00c2efd74ea297c1
 ```
 
 Alice 는 두 원장의 Contract 를 **하나의 목록으로** 봅니다. Participant 가 두 원장에
@@ -100,7 +130,7 @@ Participant 가 Synchronizer 에 가입할 때 제출하는 증서
 
 ```
 Submission failed because: Multi-synchronizer feature flag is not enabled
-for synchronizer dtcc::1220... on the following participants: Set(PAR::citi::1220...)
+for synchronizer public::1220... on the following participants: Set(PAR::bank::1220...)
 ```
 
 **설정 파일이 아니라 Topology 입니다.** 어느 Participant 가 다중 원장을 쓸 수 있는지가
@@ -128,8 +158,8 @@ for synchronizer dtcc::1220... on the following participants: Set(PAR::citi::122
     "commands": [
       { "command": { "UnassignCommand": { "value": {
           "contractId": "001fd9...",
-          "source": "dtcc::1220...",
-          "target": "euroclear::1220..." } } } }
+          "source": "public::1220...",
+          "target": "consortium::1220..." } } } }
     ]
   },
   "eventFormat": { "filtersByParty": { "Alice::1220...": { "cumulative": [ ... ] } } }
@@ -144,7 +174,7 @@ for synchronizer dtcc::1220... on the following participants: Set(PAR::citi::122
 `unassign` 직후 ACS 를 보면 항목이 남아 있지만 활성이 아닙니다.
 
 ```
-    이동중   Cash   dtcc → euroclear   001fd9ee505b59fa
+    이동중   Cash   public → consortium   001fd9ee505b59fa
 ```
 
 JSON API 는 이 항목을 `JsIncompleteUnassigned` 로 돌려줍니다. 이 상태에서 그 Contract
@@ -180,8 +210,8 @@ cause: The synchronizers for the contracts (001fd9...) are currently unknown
 10분으로 늘려 둡니다.
 
 ```scala
-dtccSequencer.topology.synchronizer_parameters.propose_update(
-  dtcc.logical,
+publicSequencer.topology.synchronizer_parameters.propose_update(
+  public.logical,
   _.update(assignmentExclusivityTimeout = NonNegativeFiniteDuration.ofMinutes(10)),
 )
 ```
@@ -193,7 +223,7 @@ dtccSequencer.topology.synchronizer_parameters.propose_update(
   t+ 5s  이동중                  t+ 5s  이동중
   t+10s  이동중                  t+25s  이동중
   t+20s  이동중                  ...      (10분까지 유지)
-  t+25s  활성 / euroclear   ← Canton 이 붙임
+  t+25s  활성 / consortium   ← Canton 이 붙임
 ```
 
 **그래서 수동 `assign` 은 "안 하면 안 되는 일"이 아니라 "빨리 하는 일"입니다.**
@@ -203,8 +233,8 @@ dtccSequencer.topology.synchronizer_parameters.propose_update(
 ### 5. Contract ID 가 바뀌지 않습니다
 
 ```
-unassign 전   dtcc        001fd9ee505b59fa
-assign 후     euroclear   001fd9ee505b59fa      ← 같습니다
+unassign 전   public        001fd9ee505b59fa
+assign 후     consortium   001fd9ee505b59fa      ← 같습니다
 ```
 
 [Step 03](Step03FirstContract.md) 의 "계약은 수정되지 않는다" 와 헷갈리기 쉽습니다.
@@ -221,8 +251,8 @@ Reassignment 는 그것을 건드리지 않습니다.
 수동으로 옮기지 않고 곧바로 `Settle` 을 제출해도 성공합니다.
 
 ```
-현금  dtcc       00329b42ba017d89
-제안  euroclear  00e66e21b0e09bb9
+현금  public       00329b42ba017d89
+제안  consortium  00e66e21b0e09bb9
 
 $ Settle — unassign/assign 없이 그대로
   성공  updateId: 12206ee3768ee8d1a40732aa
@@ -255,14 +285,14 @@ $ Settle — unassign/assign 없이 그대로
 
 ```
 수동 — commandId 가 셋 다 다릅니다
-  off 78  Reassignment  sync=dtcc       cmd=M1-unassign   JsUnassignedEvent  Cash
-  off 81  Reassignment  sync=euroclear  cmd=M2-assign     JsAssignmentEvent  Cash
-  off 84  Transaction   sync=euroclear  cmd=M3-settle     Archived DvpProposal / Created Bond / Archived Cash
+  off 78  Reassignment  sync=public       cmd=M1-unassign   JsUnassignedEvent  Cash
+  off 81  Reassignment  sync=consortium  cmd=M2-assign     JsAssignmentEvent  Cash
+  off 84  Transaction   sync=consortium  cmd=M3-settle     Archived DvpProposal / Created Bond / Archived Cash
 
 자동 — 업데이트 3개는 그대로이고 commandId 만 하나입니다
-  off 62  Reassignment  sync=dtcc       cmd=tr-2853513043 JsUnassignedEvent  Cash
-  off 65  Reassignment  sync=euroclear  cmd=tr-2853513043 JsAssignmentEvent  Cash
-  off 68  Transaction   sync=euroclear  cmd=tr-2853513043 Archived DvpProposal / Created Bond / Archived Cash
+  off 62  Reassignment  sync=public       cmd=tr-2853513043 JsUnassignedEvent  Cash
+  off 65  Reassignment  sync=consortium  cmd=tr-2853513043 JsAssignmentEvent  Cash
+  off 68  Transaction   sync=consortium  cmd=tr-2853513043 Archived DvpProposal / Created Bond / Archived Cash
 ```
 
 | | 자동이 줄이는 것 |
@@ -274,7 +304,7 @@ $ Settle — unassign/assign 없이 그대로
 | | 자동이 줄이지 않는 것 |
 | --- | --- |
 | 원장 업데이트 | 3개 그대로 |
-| 확인 프로토콜 실행 | 3회 그대로 (dtcc 1회, euroclear 2회) |
+| 확인 프로토콜 실행 | 3회 그대로 (public 1회, consortium 2회) |
 | 이동중 구간 | 존재합니다 |
 | 원자성 | 없습니다. 여전히 별개의 Transaction 세 개입니다 |
 
@@ -282,20 +312,20 @@ $ Settle — unassign/assign 없이 그대로
 
 #### 누가 대신하는가 — "Canton" 이 아닙니다
 
-자동 재배정을 제출하는 것은 **Alice 를 호스팅하는 `citi-participant`** 이고,
+자동 재배정을 제출하는 것은 **Alice 를 호스팅하는 `bank-participant`** 이고,
 `UnassignedEvent` 의 `submitter` 에는 `Alice` 가 찍힙니다. Alice 가 그 한 번의
 command 로 이미 준 권한을 쓰는 것이지 새 권한이 생기는 것이 아닙니다. Step 03~04 의
 권한 계산은 그대로입니다.
 
 다른 참여자의 Participant 는 재배정에 관여조차 하지 않습니다. 같은 구간에서
-`goldmansachs-participant` 가 본 업데이트는 하나뿐입니다.
+`issuer-participant` 가 본 업데이트는 하나뿐입니다.
 
 ```
-  off 62  Transaction  sync=euroclear   Archived DvpProposal / Created Bond / Created Cash
+  off 62  Transaction  sync=consortium   Archived DvpProposal / Created Bond / Created Cash
 ```
 
-Reassignment 두 개가 없습니다. `Cash` 의 stakeholder 는 Citi 와 Alice 뿐이고 둘 다
-`citi-participant` 가 호스팅하므로, GoldmanSachs 의 노드는 그 재배정을 볼 이유가
+Reassignment 두 개가 없습니다. `Cash` 의 stakeholder 는 Bank 와 Alice 뿐이고 둘 다
+`bank-participant` 가 호스팅하므로, Issuer 의 노드는 그 재배정을 볼 이유가
 없습니다. Sequencer 와 Mediator 도 순서 부여와 판정만 할 뿐 실행하지 않습니다.
 
 #### 그렇다면 수동 Reassignment 는 왜 쓰는가
@@ -307,7 +337,7 @@ Reassignment 두 개가 없습니다. `Cash` 의 stakeholder 는 Citi 와 Alice 
 | 이동 자체가 업무일 때 | 예탁 이관은 그 자체로 하나의 처리입니다 |
 
 자동 경로에서 **어느 원장으로 모을지는 제출자가 정합니다.** 위에서는
-`synchronizerId = euroclear` 를 지정해 현금이 euroclear 로 갔습니다. 생략하면 Canton 이
+`synchronizerId = consortium` 를 지정해 현금이 consortium 로 갔습니다. 생략하면 Canton 이
 고릅니다 — 그 선택을 통제하고 싶을 때가 수동을 쓰는 이유 중 하나입니다.
 
 ## 흔히 막히는 곳

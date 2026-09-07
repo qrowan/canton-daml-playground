@@ -106,7 +106,7 @@ show "$SRC" "^template Deposit" 9
 
 printf '\n'
 say "${B}signatory bank, owner${R} — 둘 다 동의해야 성립합니다."
-say "Step 02 에서 Citi 권한만으로 제출했을 때 거부된 이유가 이 한 줄입니다."
+say "Step 02 에서 Bank 권한만으로 제출했을 때 거부된 이유가 이 한 줄입니다."
 printf '\n'
 say "${B}ensure amount > 0.0${R} — 원장에 기록되기 전 항상 검사되는 불변식."
 note "template 에 선언되지 않은 것은 존재하지 않습니다. onlyOwner 로 막는 게 아니라"
@@ -185,19 +185,19 @@ printf '\n'
 cat <<'CALC'
     AddInterest 의 경우
 
-      signatory  = Citi, Alice
-      controller = Citi
+      signatory  = Bank, Alice
+      controller = Bank
       ─────────────────────────
-      권한        = Citi, Alice
+      권한        = Bank, Alice
 
-      만들려는 계약의 signatory = Citi, Alice   → 충족
+      만들려는 계약의 signatory = Bank, Alice   → 충족
 
 CALC
-say "${B}Citi 혼자 행사했는데 Alice 서명이 필요한 계약이 만들어진다.${R}"
+say "${B}Bank 혼자 행사했는데 Alice 서명이 필요한 계약이 만들어진다.${R}"
 printf '\n'
 say "이것이 중요한 함의를 갖는다 — ${B}계약에 서명한다는 것은 그 template 에 선언된"
 say "모든 choice 에 동의한다는 뜻${R}입니다. Alice 는 Deposit 을 수락한 시점에"
-say "'Citi 가 이자를 붙일 수 있다'에 이미 동의했습니다. 매번 다시 묻지 않습니다."
+say "'Bank 가 이자를 붙일 수 있다'에 이미 동의했습니다. 매번 다시 묻지 않습니다."
 printf '\n'
 note "현실의 계약과 같습니다. 약관에 서명하면 그 조항이 발동할 때마다 다시 서명하지 않습니다."
 
@@ -262,12 +262,12 @@ printf '\n'
 say "컴파일은 됩니다. 그런데 실행하면 실패합니다."
 printf '\n'
 cat <<'CALC2'
-      signatory  = Citi, Alice
+      signatory  = Bank, Alice
       controller = Alice
       ─────────────────────────
-      권한        = Citi, Alice
+      권한        = Bank, Alice
 
-      만들려는 계약의 signatory = Citi, Bob
+      만들려는 계약의 signatory = Bank, Bob
                                         ↑ Bob 의 권한이 없습니다
 
 CALC2

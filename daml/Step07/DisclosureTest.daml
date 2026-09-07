@@ -6,10 +6,10 @@
 
 ■ 등장 인물
 
-  Citi        발행 은행
-  Alice       Citi 의 고객
+  Bank        발행 은행
+  Alice       Bank 의 고객
   Bob         이체 상대
-  SEC         감독기관. 상시 공시 대상
+  Regulator         감독기관. 상시 공시 대상
   Auditor     외부 감사인. 필요할 때만 공시
   David       제3자. 아무것도 못 봄
 
@@ -17,17 +17,17 @@
 ■ 각 테스트가 검증하는 것
 
   상시 공시
-    testRegulatorSees            SEC 는 발행 즉시 예금을 본다
+    testRegulatorSees            Regulator 는 발행 즉시 예금을 본다
     testStrangerSeesNothing      David 는 아무것도 못 본다
-    testRegulatorSeesTransfer    이체 제안과 결과가 모두 SEC 에게 보인다
+    testRegulatorSeesTransfer    이체 제안과 결과가 모두 Regulator 에게 보인다
 
   Observer 는 권한이 아니다
-    testRegulatorCannotTransfer  SEC 는 보지만 이체시킬 수 없다
-    testRegulatorCannotArchive   SEC 는 archive 할 수 없다
+    testRegulatorCannotTransfer  Regulator 는 보지만 이체시킬 수 없다
+    testRegulatorCannotArchive   Regulator 는 archive 할 수 없다
     testStrangerCannotFreeze     제3자는 동결할 수 없다
 
   명시된 권한만 행사할 수 있다
-    testRegulatorFreezes         SEC 는 Freeze Choice 가 있으므로 동결할 수 있다
+    testRegulatorFreezes         Regulator 는 Freeze Choice 가 있으므로 동결할 수 있다
     testFrozenCannotTransfer     동결된 예금은 이체가 막힌다
     testUnfreezeRestores         해제하면 다시 이체된다
     testOwnerCannotFreeze        예금주는 자기 예금을 동결할 수 없다
@@ -48,30 +48,30 @@ import Step07.Disclosure
 
 data Setup = Setup
   with
-    citi : Party
+    bank : Party
     alice : Party
     bob : Party
-    sec : Party
+    regulator : Party
     auditor : Party
     david : Party
 
 setup : Script Setup
 setup = do
-  citi <- allocateParty "Citi"
+  bank <- allocateParty "Bank"
   alice <- allocateParty "Alice"
   bob <- allocateParty "Bob"
-  sec <- allocateParty "SEC"
+  regulator <- allocateParty "Regulator"
   auditor <- allocateParty "Auditor"
   david <- allocateParty "David"
-  pure Setup {citi, alice, bob, sec, auditor, david}
+  pure Setup {bank, alice, bob, regulator, auditor, david}
 
 issue : Setup -> Party -> Decimal -> Script (ContractId RegulatedDeposit)
-issue Setup{citi, sec} owner amount =
-  submit [citi, owner] do
+issue Setup{bank, regulator} owner amount =
+  submit [bank, owner] do
     createCmd RegulatedDeposit with
-      bank = citi
+      bank
       owner
-      regulator = sec
+      regulator
       amount
       frozen = False
 
@@ -79,11 +79,11 @@ issue Setup{citi, sec} owner amount =
 
 testRegulatorSees : Script ()
 testRegulatorSees = do
-  s@Setup{alice, sec} <- setup
+  s@Setup{alice, regulator} <- setup
 
   _ <- issue s alice 100.0
 
-  [(_, d)] <- query @RegulatedDeposit sec
+  [(_, d)] <- query @RegulatedDeposit regulator
   d.owner === alice
   d.amount === 100.0
 
@@ -98,39 +98,39 @@ testStrangerSeesNothing = do
 
 testRegulatorSeesTransfer : Script ()
 testRegulatorSeesTransfer = do
-  s@Setup{alice, bob, sec} <- setup
+  s@Setup{alice, bob, regulator} <- setup
 
   cid <- issue s alice 100.0
 
   proposalCid <- submit alice do
     exerciseCmd cid ProposeTransfer with newOwner = bob
 
-  proposals <- query @TransferProposal sec
+  proposals <- query @TransferProposal regulator
   length proposals === 1
 
   _ <- submit bob do exerciseCmd proposalCid AcceptTransfer
 
-  [(_, d)] <- query @RegulatedDeposit sec
+  [(_, d)] <- query @RegulatedDeposit regulator
   d.owner === bob
 
 -- Observer 는 권한이 아니다 -------------------------------------------------------
 
 testRegulatorCannotTransfer : Script ()
 testRegulatorCannotTransfer = do
-  s@Setup{alice, bob, sec} <- setup
+  s@Setup{alice, bob, regulator} <- setup
 
   cid <- issue s alice 100.0
 
-  submitMustFail sec do
+  submitMustFail regulator do
     exerciseCmd cid ProposeTransfer with newOwner = bob
 
 testRegulatorCannotArchive : Script ()
 testRegulatorCannotArchive = do
-  s@Setup{alice, sec} <- setup
+  s@Setup{alice, regulator} <- setup
 
   cid <- issue s alice 100.0
 
-  submitMustFail sec do
+  submitMustFail regulator do
     archiveCmd cid
 
 testStrangerCannotFreeze : Script ()
@@ -146,11 +146,11 @@ testStrangerCannotFreeze = do
 
 testRegulatorFreezes : Script ()
 testRegulatorFreezes = do
-  s@Setup{alice, sec} <- setup
+  s@Setup{alice, regulator} <- setup
 
   cid <- issue s alice 100.0
 
-  frozenCid <- submit sec do
+  frozenCid <- submit regulator do
     exerciseCmd cid Freeze
 
   Some d <- queryContractId alice frozenCid
@@ -158,23 +158,23 @@ testRegulatorFreezes = do
 
 testFrozenCannotTransfer : Script ()
 testFrozenCannotTransfer = do
-  s@Setup{alice, bob, sec} <- setup
+  s@Setup{alice, bob, regulator} <- setup
 
   cid <- issue s alice 100.0
 
-  frozenCid <- submit sec do exerciseCmd cid Freeze
+  frozenCid <- submit regulator do exerciseCmd cid Freeze
 
   submitMustFail alice do
     exerciseCmd frozenCid ProposeTransfer with newOwner = bob
 
 testUnfreezeRestores : Script ()
 testUnfreezeRestores = do
-  s@Setup{alice, bob, sec} <- setup
+  s@Setup{alice, bob, regulator} <- setup
 
   cid <- issue s alice 100.0
 
-  frozenCid <- submit sec do exerciseCmd cid Freeze
-  liveCid <- submit sec do exerciseCmd frozenCid Unfreeze
+  frozenCid <- submit regulator do exerciseCmd cid Freeze
+  liveCid <- submit regulator do exerciseCmd frozenCid Unfreeze
 
   _ <- submit alice do
     exerciseCmd liveCid ProposeTransfer with newOwner = bob
@@ -204,7 +204,7 @@ testAuditorSeesNothingBefore = do
 
 testPublishAddsAuditor : Script ()
 testPublishAddsAuditor = do
-  s@Setup{alice, auditor, sec} <- setup
+  s@Setup{alice, auditor, regulator} <- setup
 
   cid <- issue s alice 100.0
 
@@ -214,7 +214,7 @@ testPublishAddsAuditor = do
   seen <- query @AuditedDeposit auditor
   length seen === 1
 
-  regulatorSees <- query @AuditedDeposit sec
+  regulatorSees <- query @AuditedDeposit regulator
   length regulatorSees === 1
 
 testUnpublishHidesFuture : Script ()

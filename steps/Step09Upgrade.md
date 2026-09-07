@@ -174,11 +174,11 @@ Contract 는 전부 사용 불가가 됩니다.
 
 ### 6. 혼자서는 업그레이드할 수 없습니다
 
-v2 를 `citi` 에만 올려 둔 상태에서, **같은 명령**을 두 상대에게 보내 봅니다.
+v2 를 `bank` 에만 올려 둔 상태에서, **같은 명령**을 두 상대에게 보내 봅니다.
 
 ```
-Alice 앞으로  #step09-voucher   →  v2   (Alice 는 citi 노드, citi 는 v2 보유)
-Bob   앞으로  #step09-voucher   →  v1   (Bob 은 morganstanley 노드, v2 없음)
+Alice 앞으로  #step09-voucher   →  v2   (Alice 는 bank 노드, bank 는 v2 보유)
+Bob   앞으로  #step09-voucher   →  v1   (Bob 은 broker 노드, v2 없음)
 ```
 
 Canton 이 참여자 전원의 vetting 상태를 보고 **모두가 가진 가장 높은 버전**을 고릅니다.
@@ -187,10 +187,10 @@ Canton 이 참여자 전원의 vetting 상태를 보고 **모두가 가진 가�
 ```
 $ Bob 앞으로 v2 를 못박아서 발행
   실패  NO_SYNCHRONIZER_FOR_SUBMISSION
-  cause: Some packages are not known to all informees on synchronizer dtcc::1220...
+  cause: Some packages are not known to all informees on synchronizer public::1220...
 ```
 
-`morganstanley` 에도 올리면 그때부터 v2 로 풀립니다.
+`broker` 에도 올리면 그때부터 v2 로 풀립니다.
 
 ```
 Bob 앞으로  #step09-voucher   →  v2

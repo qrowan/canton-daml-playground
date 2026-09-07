@@ -1,7 +1,7 @@
 # Step 04 — 두 당사자
 
 [Step 03](Step03FirstContract.md) 에서 `Transfer` 가 실패했습니다. 그리고 발행도 사실은
-`submit [Citi, Alice]` 라는 편법에 기대고 있었다.
+`submit [Bank, Alice]` 라는 편법에 기대고 있었다.
 
 두 문제의 원인은 같습니다. **한 트랜잭션에 두 party 의 권한이 필요한데, participant 는
 자기가 호스팅하는 party 의 권한만 행사할 수 있습니다.**
@@ -32,7 +32,7 @@
 
 | | Step 03 | Step 04 |
 | --- | --- | --- |
-| 발행 | `submit [Citi, Alice]` 직접 생성 | `DepositProposal` → `AcceptDeposit` |
+| 발행 | `submit [Bank, Alice]` 직접 생성 | `DepositProposal` → `AcceptDeposit` |
 | 이체 | `Transfer` (실행 실패) | `ProposeTransfer` → `AcceptTransfer` |
 | 템플릿 수 | 1 | 3 |
 | `observer` | 없음 | 제안 템플릿에 등장 |
@@ -43,11 +43,11 @@
 ## 왜 `submit [a, b]` 가 편법인가
 
 ```
-같은 노드      citi-participant { Citi, Alice }
-               → actAs [Citi, Alice] 가능
+같은 노드      bank-participant { Bank, Alice }
+               → actAs [Bank, Alice] 가능
 
-다른 노드      citi-participant          { Citi }
-               morganstanley-participant { Bob }
+다른 노드      bank-participant          { Bank }
+               broker-participant { Bob }
                → 어느 쪽도 두 권한을 동시에 갖지 못함
 ```
 
@@ -77,25 +77,25 @@ Bob 같은 타행 고객이었다면 그 코드는 실제 환경에서 동작하
 ### 1. 권한 계산 — 발행
 
 ```
-TX 1   Citi 가 혼자 제안을 만든다
-         signatory = Citi 뿐 → Citi 권한만으로 생성 가능
+TX 1   Bank 가 혼자 제안을 만든다
+         signatory = Bank 뿐 → Bank 권한만으로 생성 가능
 
 TX 2   Alice 가 AcceptDeposit 을 행사
-         권한 = [Citi] + [Alice] = Citi, Alice
-         만들려는 Deposit 의 signatory = Citi, Alice   → 충족
+         권한 = [Bank] + [Alice] = Bank, Alice
+         만들려는 Deposit 의 signatory = Bank, Alice   → 충족
 ```
 
 ### 2. 권한 계산 — 이체
 
 ```
 TX 1   Alice 가 ProposeTransfer 를 행사
-         권한 = [Citi, Alice] + [Alice] = Citi, Alice
-         만들려는 TransferProposal 의 signatory = Citi, Alice   → 충족
+         권한 = [Bank, Alice] + [Alice] = Bank, Alice
+         만들려는 TransferProposal 의 signatory = Bank, Alice   → 충족
          ← 원본 Deposit 은 여기서 소비된다
 
 TX 2   Bob 이 AcceptTransfer 를 행사
-         권한 = [Citi, Alice] + [Bob] = Citi, Alice, Bob
-         만들려는 Deposit 의 signatory = Citi, Bob            → 충족
+         권한 = [Bank, Alice] + [Bob] = Bank, Alice, Bob
+         만들려는 Deposit 의 signatory = Bank, Bob            → 충족
 ```
 
 **TX 2 에서 Alice 의 권한이 어디서 왔는지 주목할 것.** Alice 는 그 트랜잭션을
@@ -113,7 +113,7 @@ template DepositProposal
   with
     deposit : Deposit
   where
-    signatory deposit.bank      -- Citi 만 서명
+    signatory deposit.bank      -- Bank 만 서명
     observer deposit.owner      -- Alice 는 볼 수만 있다
 
     choice AcceptDeposit : ContractId Deposit
@@ -166,8 +166,8 @@ choice RejectTransfer : ContractId Deposit
 
 | 발행 | 검증 |
 | --- | --- |
-| `testIssueViaProposal` | Citi 가 혼자 제안 → Alice 가 수락 → 예금 생성 |
-| `testProposalVisibleToOwner` | 제안이 Citi 와 Alice 에게만 보인다 (David 는 못 봄) |
+| `testIssueViaProposal` | Bank 가 혼자 제안 → Alice 가 수락 → 예금 생성 |
+| `testProposalVisibleToOwner` | 제안이 Bank 와 Alice 에게만 보인다 (David 는 못 봄) |
 | `testRejectIssue` | 거절하면 예금이 생기지 않는다 |
 | `testCancelIssue` | 제안자도 철회할 수 있다 |
 | `testStrangerCannotAcceptIssue` | David 는 Alice 앞으로 온 제안을 수락할 수 없다 |

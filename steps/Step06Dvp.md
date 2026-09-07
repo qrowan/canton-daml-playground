@@ -22,8 +22,8 @@ Transaction 안에서** 일어나야 합니다.
 
 | 이름 | 역할 |
 | --- | --- |
-| **Citi** | 현금(토큰화 예금) 발행 |
-| **GoldmanSachs** | 채권 발행 |
+| **Bank** | 현금(토큰화 예금) 발행 |
+| **Issuer** | 채권 발행 |
 | **Bob** | 채권 보유. 매도자 |
 | **Alice** | 현금 보유. 매수자 |
 | **David** | 제3자 |
@@ -81,16 +81,16 @@ Transaction 은 이미 양쪽 권한을 갖고 있으므로 거기서는 쓸 수
 `Settle` 을 행사하는 시점입니다.
 
 ```
-DvpProposal 의 signatory = GoldmanSachs, Bob
+DvpProposal 의 signatory = Issuer, Bob
 Settle 의 controller     = Alice
 ─────────────────────────────────────────
-이 지점의 권한            = GoldmanSachs, Bob, Alice
+이 지점의 권한            = Issuer, Bob, Alice
 ```
 
 **채권 다리 — 직접 create**
 
 ```
-만들려는 Bond 의 signatory = GoldmanSachs, Alice        → 충족
+만들려는 Bond 의 signatory = Issuer, Alice        → 충족
 ```
 
 **현금 다리 — 중첩 exercise**
@@ -101,20 +101,20 @@ exercise cashCid CashTransfer
     → 둘 다 현재 권한에 있으므로 행사 가능
 
   그 안의 권한 = [Cash 의 signatory] + [controller]
-               = (Citi, Alice) + (Alice, Bob)
-               = Citi, Alice, Bob
+               = (Bank, Alice) + (Alice, Bob)
+               = Bank, Alice, Bob
 
-  만들려는 Cash 의 signatory = Citi, Bob                 → 충족
+  만들려는 Cash 의 signatory = Bank, Bob                 → 충족
 ```
 
-**Citi 는 이 Transaction 에 아무 행위도 하지 않았는데 권한이 실렸습니다.** Cash
+**Bank 는 이 Transaction 에 아무 행위도 하지 않았는데 권한이 실렸습니다.** Cash
 Contract 의 signatory 로서 이미 동의해 둔 것이 Choice 를 통해 흘러온 것입니다.
 
 발행자가 결제 시점에 온라인일 필요가 없는 이유입니다. Step 03 의 `AddInterest` 에서
 본 것과 같은 원리가, 여기서는 중첩된 exercise 를 통해 두 단계로 흐릅니다.
 
 > 직접 create 로 바꾸면 왜 실패하는지 계산해 볼 것. `create cash with owner = bond.owner`
-> 는 `Citi` 의 권한을 얻을 길이 없습니다. 그래서 반드시 exercise 를 거쳐야 합니다.
+> 는 `Bank` 의 권한을 얻을 길이 없습니다. 그래서 반드시 exercise 를 거쳐야 합니다.
 
 ### 3. 채권만 잠깁니다
 
@@ -179,7 +179,7 @@ Alice 의 현금은 `Settle` 시점에 인자로 지정됩니다. 그 사이 Ali
 ## 다중 노드에서 돌리려면
 
 이 Step 은 `dpm test` 로 진행합니다. [Step 05](Step05MultiParticipant.md) 의 구성에
-`goldmansachs` participant 를 추가하면 실제 노드 간 DvP 를 확인할 수 있습니다.
+`issuer` participant 를 추가하면 실제 노드 간 DvP 를 확인할 수 있습니다.
 
 `canton/step05.conf` 에 participant 를 하나 더 선언하고 `step05-bootstrap.canton` 에서
 `connect_local` 과 `parties.enable` 을 추가하면 됩니다. 권한 모델이 이미 맞으므로

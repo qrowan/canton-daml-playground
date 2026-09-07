@@ -73,9 +73,9 @@ cat <<'BANNER'
  HTTP 로 계약을 생성해 프라이버시와 권한 검사를 확인합니다.
 
  등장 인물
-   Citi    토큰화 예금을 발행하는 은행       (party)
-   Alice   Citi 의 고객                      (party)
-   David   Citi 의 또 다른 고객               (party)
+   Bank    토큰화 예금을 발행하는 은행       (party)
+   Alice   Bank 의 고객                      (party)
+   David   Bank 의 또 다른 고객               (party)
 
  Step 01 에서 정의한 용어가 실제로 무엇인지 눈으로 봅니다.
 BANNER
@@ -190,12 +190,12 @@ note "어떤 party 도 대리하지 않습니다. 다음 두 단계는 이 계�
 
 # ─── 5. party 생성 ───────────────────────────────────────────────────────────
 
-title "party 생성 — Citi, Alice, David"
+title "party 생성 — Bank, Alice, David"
 say "Canton 은 party 를 기본 제공하지 않습니다. participant 운영자가 발급합니다."
 say "partyIdHint 로 이름 힌트를 줍니다."
 pause
 
-for hint in Citi Alice David; do
+for hint in Bank Alice David; do
   run "curl -s -X POST \$API/v2/parties -H 'Content-Type: application/json' -d '{\"partyIdHint\":\"$hint\",\"identityProviderId\":\"\"}' | python3 -c 'import sys,json; d=json.load(sys.stdin); print(d.get(\"partyDetails\",d).get(\"party\", d))'"
 done
 
@@ -206,18 +206,18 @@ ps=[d['party'] for d in json.load(sys.stdin)['partyDetails'] if d['party'].start
 print(ps[0] if ps else '')
 "
 }
-export CITI=$(findparty Citi)
+export BANK=$(findparty Bank)
 export ALICE=$(findparty Alice)
 export DAVID=$(findparty David)
-[ -n "$CITI" ] && [ -n "$ALICE" ] && [ -n "$DAVID" ] || die "party 생성에 실패했습니다. 위 응답을 확인하세요."
+[ -n "$BANK" ] && [ -n "$ALICE" ] && [ -n "$DAVID" ] || die "party 생성에 실패했습니다. 위 응답을 확인하세요."
 
 printf '\n'
-ok "CITI  = $CITI"
+ok "BANK  = $BANK"
 ok "ALICE = $ALICE"
 ok "DAVID = $DAVID"
 printf '\n'
 say "${B}주목할 것${R} — 세 party 의 :: 뒷부분이 모두 같습니다."
-run "echo \"\$CITI\" \"\$ALICE\" \"\$DAVID\" | tr ' ' '\\n' | sed 's/.*:://' | sort -u"
+run "echo \"\$BANK\" \"\$ALICE\" \"\$DAVID\" | tr ' ' '\\n' | sed 's/.*:://' | sort -u"
 note "이것이 namespace fingerprint 이고, 이 party 들을 발급한 키의 지문입니다."
 note "셋 다 같은 participant 가 발급했으므로 동일하다. Alice 와 David 는 hosted party 이고"
 note "자기 키를 갖고 있지 않다."
@@ -229,7 +229,7 @@ say "party 만으로는 커맨드를 제출할 수 없습니다. 인증이 꺼�
 say ""
 say "  ${B}계약에 이름이 남는 것이 party, 그 party 로 API 를 호출할 자격이 user${R}"
 say ""
-say "citi-settlement 에는 Citi 와 Alice 두 party 의 CanActAs 를 줍니다."
+say "bank-settlement 에는 Bank 와 Alice 두 party 의 CanActAs 를 줍니다."
 say "은행의 백오피스가 자기 명의와 고객 명의를 모두 대리하는 실제 구성이고,"
 say "한 user 가 여러 party 를 대리할 수 있음을 보여줍니다."
 pause
@@ -246,15 +246,15 @@ mkuser() { # $1=id  $2..=parties
     | python3 -c 'import sys,json; d=json.load(sys.stdin); print("생성:", d["user"]["id"]) if "user" in d else print("실패:", d.get("cause","?")[:100])'
 }
 
-printf '%s$ POST /v2/users  (id=citi-settlement, CanActAs Citi + Alice)%s\n\n' "$YE" "$R"
-mkuser citi-settlement "$CITI" "$ALICE"
+printf '%s$ POST /v2/users  (id=bank-settlement, CanActAs Bank + Alice)%s\n\n' "$YE" "$R"
+mkuser bank-settlement "$BANK" "$ALICE"
 printf '%s$ POST /v2/users  (id=alice-web, CanActAs Alice)%s\n\n' "$YE" "$R"
 mkuser alice-web "$ALICE"
 printf '%s$ POST /v2/users  (id=david-web, CanActAs David)%s\n\n' "$YE" "$R"
 mkuser david-web "$DAVID"
 
 printf '\n'
-run "curl -s \$API/v2/users/citi-settlement/rights | python3 -c 'import sys,json; rs=json.load(sys.stdin)[\"rights\"]; [print(\" \", list(r[\"kind\"])[0], \"→\", list(r[\"kind\"].values())[0][\"value\"][\"party\"].split(\"::\")[0]) for r in rs]'"
+run "curl -s \$API/v2/users/bank-settlement/rights | python3 -c 'import sys,json; rs=json.load(sys.stdin)[\"rights\"]; [print(\" \", list(r[\"kind\"])[0], \"→\", list(r[\"kind\"].values())[0][\"value\"][\"party\"].split(\"::\")[0]) for r in rs]'"
 note "한 user 가 두 party 를 대리합니다. party ↔ user 는 N:M 관계다."
 
 # ─── 7. package-id ───────────────────────────────────────────────────────────
@@ -274,25 +274,25 @@ note "--dar 로 넘겼으므로 sandbox 가 업로드와 vetting 을 함께 처�
 
 # ─── 8. 권한 부족 실패 ───────────────────────────────────────────────────────
 
-title "Citi 혼자서는 예금을 만들 수 없습니다"
+title "Bank 혼자서는 예금을 만들 수 없습니다"
 say "Deposit 의 signatory 는 bank 와 owner 둘입니다."
-say "Citi 권한만으로 제출하면 Alice 의 동의가 없어 거부됩니다."
+say "Bank 권한만으로 제출하면 Alice 의 동의가 없어 거부됩니다."
 pause
 
 DEP="$PKG:Step02.Deposit:Deposit"
-run "curl -s -X POST \$API/v2/commands/submit-and-wait -H 'Content-Type: application/json' -d '{\"commands\":[{\"CreateCommand\":{\"templateId\":\"$DEP\",\"createArguments\":{\"bank\":\"'\$CITI'\",\"owner\":\"'\$ALICE'\",\"amount\":\"100.0\"}}}],\"commandId\":\"s02-fail1\",\"userId\":\"citi-settlement\",\"actAs\":[\"'\$CITI'\"],\"readAs\":[]}' | python3 -c 'import sys,json; d=json.load(sys.stdin); print(\"code :\", d.get(\"code\")); print(\"cause:\", d.get(\"cause\",\"\")[:200])'"
+run "curl -s -X POST \$API/v2/commands/submit-and-wait -H 'Content-Type: application/json' -d '{\"commands\":[{\"CreateCommand\":{\"templateId\":\"$DEP\",\"createArguments\":{\"bank\":\"'\$BANK'\",\"owner\":\"'\$ALICE'\",\"amount\":\"100.0\"}}}],\"commandId\":\"s02-fail1\",\"userId\":\"bank-settlement\",\"actAs\":[\"'\$BANK'\"],\"readAs\":[]}' | python3 -c 'import sys,json; d=json.load(sys.stdin); print(\"code :\", d.get(\"code\")); print(\"cause:\", d.get(\"cause\",\"\")[:200])'"
 note "DAML_AUTHORIZATION_ERROR. requires authorizers 에 Alice 가 포함되어 있습니다."
 
 # ─── 9. 양쪽 권한으로 생성 ───────────────────────────────────────────────────
 
-title "Citi + Alice 권한으로 발행"
+title "Bank + Alice 권한으로 발행"
 say "actAs 에 두 party 를 넣습니다. 이 participant 가 양쪽을 모두 호스팅하므로 가능하다."
 say ""
 warn "실제로 Alice 가 다른 은행 고객이라면 불가능하다. 그때는 propose/accept 가 필요하고"
 warn "Step 04~05 에서 다룬다."
 pause
 
-run "curl -s -X POST \$API/v2/commands/submit-and-wait -H 'Content-Type: application/json' -d '{\"commands\":[{\"CreateCommand\":{\"templateId\":\"$DEP\",\"createArguments\":{\"bank\":\"'\$CITI'\",\"owner\":\"'\$ALICE'\",\"amount\":\"100.0\"}}}],\"commandId\":\"s02-ok\",\"userId\":\"citi-settlement\",\"actAs\":[\"'\$CITI'\",\"'\$ALICE'\"],\"readAs\":[]}' | python3 -m json.tool"
+run "curl -s -X POST \$API/v2/commands/submit-and-wait -H 'Content-Type: application/json' -d '{\"commands\":[{\"CreateCommand\":{\"templateId\":\"$DEP\",\"createArguments\":{\"bank\":\"'\$BANK'\",\"owner\":\"'\$ALICE'\",\"amount\":\"100.0\"}}}],\"commandId\":\"s02-ok\",\"userId\":\"bank-settlement\",\"actAs\":[\"'\$BANK'\",\"'\$ALICE'\"],\"readAs\":[]}' | python3 -m json.tool"
 ok "예금 계약이 원장에 기록되었다."
 
 # ─── 10. 조회와 프라이버시 ───────────────────────────────────────────────────
@@ -338,7 +338,7 @@ title "David 가 Alice 명의로 예금을 날조할 수 있는가"
 say "createArguments 의 owner 에 Alice 를 쓰고 David 권한으로 제출합니다."
 pause
 
-run "curl -s -X POST \$API/v2/commands/submit-and-wait -H 'Content-Type: application/json' -d '{\"commands\":[{\"CreateCommand\":{\"templateId\":\"$DEP\",\"createArguments\":{\"bank\":\"'\$CITI'\",\"owner\":\"'\$ALICE'\",\"amount\":\"999.0\"}}}],\"commandId\":\"s02-forge\",\"userId\":\"david-web\",\"actAs\":[\"'\$DAVID'\"],\"readAs\":[]}' | python3 -c 'import sys,json; d=json.load(sys.stdin); print(\"code :\", d.get(\"code\")); print(\"cause:\", d.get(\"cause\",\"\")[:260])'"
+run "curl -s -X POST \$API/v2/commands/submit-and-wait -H 'Content-Type: application/json' -d '{\"commands\":[{\"CreateCommand\":{\"templateId\":\"$DEP\",\"createArguments\":{\"bank\":\"'\$BANK'\",\"owner\":\"'\$ALICE'\",\"amount\":\"999.0\"}}}],\"commandId\":\"s02-forge\",\"userId\":\"david-web\",\"actAs\":[\"'\$DAVID'\"],\"readAs\":[]}' | python3 -c 'import sys,json; d=json.load(sys.stdin); print(\"code :\", d.get(\"code\")); print(\"cause:\", d.get(\"cause\",\"\")[:260])'"
 
 printf '\n'
 say "${B}세 가지를 확인할 것.${R}"
@@ -354,9 +354,9 @@ title "확인한 것"
 cat <<SUMMARY
 
   Participant node   sandbox 는 participant + sequencer + mediator 를 한 프로세스로
-  Party              Citi / Alice / David. :: 뒷부분이 발급 키의 지문
+  Party              Bank / Alice / David. :: 뒷부분이 발급 키의 지문
   Hosted party       셋 다 같은 지문 → participant 가 발급 → 자기 키 없음
-  User               citi-settlement 하나가 두 party 를 대리 (N:M)
+  User               bank-settlement 하나가 두 party 를 대리 (N:M)
   ParticipantAdmin   party·user 생성은 노드 운영 작업
   DAR / package-id   내용 해시로 코드를 지목
   Signatory          bank + owner 양쪽 동의 → 한쪽만으로는 생성 불가
@@ -371,7 +371,7 @@ SUMMARY
 if [ "$KEEP" = 1 ]; then
   say "sandbox 가 계속 실행 중입니다. 직접 더 만져보려면:"
   note "  export API=http://localhost:7575"
-  note "  export CITI='$CITI'"
+  note "  export BANK='$BANK'"
   note "  export ALICE='$ALICE'"
   note "  export DAVID='$DAVID'"
   note "  export PKG=$PKG"

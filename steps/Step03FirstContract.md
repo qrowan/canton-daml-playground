@@ -82,18 +82,18 @@ choice <이름> : <반환 타입>
 `AddInterest` 를 예로 들면:
 
 ```
-  signatory  = Citi, Alice
-  controller = Citi
+  signatory  = Bank, Alice
+  controller = Bank
   ─────────────────────────
-  권한        = Citi, Alice
+  권한        = Bank, Alice
 
-  만들려는 계약의 signatory = Citi, Alice   → 충족
+  만들려는 계약의 signatory = Bank, Alice   → 충족
 ```
 
-**Citi 혼자 행사했는데 Alice 서명이 필요한 계약이 만들어진다.**
+**Bank 혼자 행사했는데 Alice 서명이 필요한 계약이 만들어진다.**
 
 여기서 중요한 함의가 나온다 — **계약에 서명한다는 것은 그 template 에 선언된 모든
-choice 에 동의한다는 뜻**입니다. Alice 는 Deposit 을 수락한 시점에 "Citi 가 이자를
+choice 에 동의한다는 뜻**입니다. Alice 는 Deposit 을 수락한 시점에 "Bank 가 이자를
 붙일 수 있다"에 이미 동의했습니다. 매번 다시 묻지 않습니다.
 
 현실의 계약과 같습니다. 약관에 서명하면 그 조항이 발동할 때마다 다시 서명하지 않습니다.
@@ -121,12 +121,12 @@ Daml         archive(cid1)              cid1 은 무효가 되고
 ### 3. Transfer 는 실패합니다 — 그리고 그것이 옳습니다
 
 ```
-  signatory  = Citi, Alice
+  signatory  = Bank, Alice
   controller = Alice
   ─────────────────────────
-  권한        = Citi, Alice
+  권한        = Bank, Alice
 
-  만들려는 계약의 signatory = Citi, Bob
+  만들려는 계약의 signatory = Bank, Bob
                                     ↑ Bob 의 권한이 없다
 ```
 
@@ -149,11 +149,11 @@ Bob 이 서명했을 리 없습니다. 남에게 원치 않는 채권·채무를
 | 속도 | 빠름 (초 단위) | 느림 (기동 포함) |
 | 검증하는 것 | Daml 로직·권한 모델 | 실제 원장 동작 |
 | party 관리 | `allocateParty` 로 매번 새로 | 영속 (재기동 전까지) |
-| 다중 party 제출 | `submit [Citi, Alice]` 가 항상 통함 | participant 가 둘 다 호스팅할 때만 |
+| 다중 party 제출 | `submit [Bank, Alice]` 가 항상 통함 | participant 가 둘 다 호스팅할 때만 |
 
 로직은 `dpm test` 로 빠르게, 원장 동작은 러너로 확인합니다.
 
-`submit [Citi, Alice]` 는 테스트 전용으로 볼 것. 노드가 다르면 불가능하고, 그때
+`submit [Bank, Alice]` 는 테스트 전용으로 볼 것. 노드가 다르면 불가능하고, 그때
 필요한 것이 Step 04 다.
 
 ### 5. 실패 경로를 테스트하라
@@ -162,7 +162,7 @@ Bob 이 서명했을 리 없습니다. 남에게 원치 않는 채권·채무를
 
 | 테스트 | 검증 |
 | --- | --- |
-| `testBankAloneCannotIssue` | Citi 혼자서는 발행 불가 |
+| `testBankAloneCannotIssue` | Bank 혼자서는 발행 불가 |
 | `testOwnerAloneCannotIssue` | Alice 혼자서도 발행 불가 |
 | `testEnsureRejectsZero` | `ensure` 위반은 기록되지 않음 |
 | `testWithdrawTooMuch` | 잔액 초과 인출 거부 |

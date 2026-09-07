@@ -17,21 +17,21 @@ Canton 의 용어를 하나의 시나리오를 끝까지 따라가며 익힙니�
 
 | 이름 | 정체 | Canton 에서의 위치 |
 | --- | --- | --- |
-| **DTCC** | 예탁결제기관 | Synchronizer 운영 |
-| **Citi** | 상업은행. 토큰화 예금 발행 | Participant 운영 + Party |
-| **Morgan Stanley** | 투자은행. Bob 의 증권사 | Participant 운영 + Party |
-| **Alice** | Citi 의 개인 고객 | Party (Citi 가 발급) |
-| **David** | Citi 의 또 다른 개인 고객 | Party (Citi 가 발급) |
-| **Bob** | Morgan Stanley 의 개인 고객 | Party (Morgan Stanley 가 발급) |
+| **Sync 운영자** | Synchronizer 를 운영하는 인프라 사업자. 원장 위의 주체가 아니라 인프라입니다 | Synchronizer 운영 |
+| **Bank** | 토큰화 예금을 발행하는 금융기관 | Participant 운영 + Party |
+| **Broker** | Bob 의 거래를 담당하는 금융기관 | Participant 운영 + Party |
+| **Alice** | Bank 의 개인 고객 | Party (Bank 가 발급) |
+| **David** | Bank 의 또 다른 개인 고객 | Party (Bank 가 발급) |
+| **Bob** | Broker 의 개인 고객 | Party (Broker 가 발급) |
 
 이후 Step 에서 등장합니다.
 
 | 이름 | 정체 | 어디서 |
 | --- | --- | --- |
-| **Robinhood** | 소매 브로커. 고객 Party 다수 위탁 호스팅 | 다중 호스팅, 커스터디 |
+| **Custodian** | 다른 기관의 Party 를 자기 노드에 대신 호스팅하는 수탁 사업자 | 다중 호스팅 |
 | **Charlie** | 자기 키를 직접 보유하는 개인 | External Party |
-| **SEC** | 감독기관 | Observer, 공시 |
-| **Goldman Sachs** | 증권 발행·거래 상대방 | DvP 교환 |
+| **Regulator** | 감독기관 | Observer, 공시 |
+| **Issuer** | 증권을 발행하는 기관 | DvP 교환 |
 
 Alice, David, Bob 은 **각자의 은행이 발급한 Party** 입니다. 자기 키를 갖고 있지
 않습니다. 자기 키를 쥔 개인은 Charlie 이고, 그 차이는 2절에서 다룹니다.
@@ -40,11 +40,11 @@ Alice, David, Bob 은 **각자의 은행이 발급한 Party** 입니다. 자기 
 
 ## 시나리오
 
-Citi 가 Alice 에게 토큰화 예금 100 을 발행합니다. Alice 가 그것을 Bob 에게 이체합니다.
+Bank 가 Alice 에게 토큰화 예금 100 을 발행합니다. Alice 가 그것을 Bob 에게 이체합니다.
 
 ```
     ┌─────────────┐                      ┌──────────────────┐
-    │    Citi     │  ──── 발행 ────▶     │      Alice       │
+    │    Bank     │  ──── 발행 ────▶     │      Alice       │
     └─────────────┘                      └──────────────────┘
                                                   │
                                                  이체
@@ -53,7 +53,7 @@ Citi 가 Alice 에게 토큰화 예금 100 을 발행합니다. Alice 가 그것
                                          │       Bob        │
                                          └──────────────────┘
 
-    Alice 는 Citi 고객, Bob 은 Morgan Stanley 고객 → 서로 다른 Participant
+    Alice 는 Bank 고객, Bob 은 Broker 고객 → 서로 다른 Participant
 ```
 
 ---
@@ -63,16 +63,16 @@ Citi 가 Alice 에게 토큰화 예금 100 을 발행합니다. Alice 가 그것
 거래가 시작되기 전에 노드들이 존재합니다.
 
 ```
-  citi-participant                    morganstanley-participant
-  (Citi 가 운영)                       (Morgan Stanley 가 운영)
+  bank-participant                    broker-participant
+  (Bank 가 운영)                       (Broker 가 운영)
         │                                        │
         └───────────────┬────────────────────────┘
                         │
-              ┌─────────┴──────────┐
-              │   Synchronizer     │  DTCC 운영
-              │   dtcc-sequencer   │  순서 부여
-              │   dtcc-mediator    │  판정
-              └────────────────────┘
+              ┌─────────┴────────────┐
+              │   Synchronizer       │  Sync 운영자가 운영
+              │   public-sequencer   │  순서 부여
+              │   public-mediator    │  판정
+              └──────────────────────┘
 ```
 
 ### Participant node
@@ -87,7 +87,7 @@ Citi 가 Alice 에게 토큰화 예금 100 을 발행합니다. Alice 가 그것
 3. 애플리케이션에 Ledger API 를 제공합니다
 
 **"자기 몫"** 이 핵심입니다. Participant 는 전체 원장의 사본을 갖지 않습니다. 자기가
-관여한 Contract 만 갖습니다. `morganstanley-participant` 에는 Citi 내부 거래가
+관여한 Contract 만 갖습니다. `broker-participant` 에는 Bank 내부 거래가
 존재하지 않습니다.
 
 > **❓ Participant 는 Contract 를 저장하나요, state 를 저장하나요?**
@@ -95,7 +95,7 @@ Citi 가 Alice 에게 토큰화 예금 100 을 발행합니다. Alice 가 그것
 > **같은 것입니다.** Daml 에는 Contract 와 별개의 state 가 없습니다.
 >
 > EVM 은 코드와 스토리지가 따로 있고 함수가 스토리지 변수를 고칩니다. Daml 은
-> "Alice 가 Citi 에 100 예금이 있다"는 사실 자체가 Contract 하나이고, **활성
+> "Alice 가 Bank 에 100 예금이 있다"는 사실 자체가 Contract 하나이고, **활성
 > Contract 들의 집합이 곧 현재 상태**입니다. 그래서 이 저장소 이름이
 > **ACS(Active Contract Store)** 입니다.
 >
@@ -109,8 +109,8 @@ Citi 가 Alice 에게 토큰화 예금 100 을 발행합니다. Alice 가 그것
 
 | 노드 | 하는 일 | 볼 수 있는 것 |
 | --- | --- | --- |
-| **Sequencer** (`dtcc-sequencer`) | 모든 메시지에 전순서를 부여해 수신자에게 전달 | Envelope 만 — 수신자, 크기, 시각 |
-| **Mediator** (`dtcc-mediator`) | 참가자들의 확인 응답을 모아 최종 판정 | 해시만 |
+| **Sequencer** (`public-sequencer`) | 모든 메시지에 전순서를 부여해 수신자에게 전달 | Envelope 만 — 수신자, 크기, 시각 |
+| **Mediator** (`public-mediator`) | 참가자들의 확인 응답을 모아 최종 판정 | 해시만 |
 
 **Envelope** 은 Canton 의 용어로, 암호화된 내용물을 감싼 봉투에 해당합니다. 수신자와
 크기 같은 배송 정보는 겉면에 있고 내용물은 열 수 없습니다.
@@ -120,8 +120,8 @@ Citi 가 Alice 에게 토큰화 예금 100 을 발행합니다. Alice 가 그것
 > 아닙니다. **검증은 Participant 가 합니다.** Synchronizer 는 순서와 전달만 맡습니다.
 >
 > 이것이 Canton 을 다른 원장과 가르는 첫 번째 지점입니다. Synchronizer 가 검증하려면
-> 내용을 봐야 하고, 그러면 프라이버시가 성립하지 않습니다. 그래서 DTCC 는 Citi 와
-> Morgan Stanley 사이의 거래 내용을 볼 수 없습니다.
+> 내용을 봐야 하고, 그러면 프라이버시가 성립하지 않습니다. 그래서 **Synchronizer 를
+> 운영하는 쪽은 Bank 와 Broker 사이의 거래 내용을 볼 수 없습니다.**
 
 ### Synchronizer 는 여러 개입니다
 
@@ -129,8 +129,26 @@ Citi 가 Alice 에게 토큰화 예금 100 을 발행합니다. Alice 가 그것
 연결합니다. 전 세계 상태를 합의하는 단일 체인이 없습니다.
 
 공개 Canton Network 에는 **Global Synchronizer** 라는 고유명사가 하나 있습니다
-(Super Validator 컨소시엄이 BFT 로 공동 운영). 그와 별개로 DTCC 같은 기관이 운영하는
-사설 Synchronizer 들이 용도별로 존재합니다.
+(Super Validator 컨소시엄이 BFT 로 공동 운영). 그와 별개로 기관이나 컨소시엄이 운영하는
+사설 Synchronizer 들이 존재합니다.
+
+**나누는 기준은 자산 종류가 아닙니다.** Synchronizer 는 거래 내용을 보지 못하므로 그
+안에 현금이 있는지 증권이 있는지 알 수가 없습니다. 경계를 정하는 것은 운영 쪽 요구입니다.
+
+| 이유 | 내용 |
+| --- | --- |
+| 규제 | 특정 관할의 Participant 만 처리하도록 제한 |
+| 성능 | 처리량 높은 흐름을 나눠 경합을 줄임 |
+| 격리 | 특정 거래 흐름을 공용망과 완전히 분리 |
+| 비용 | 공용망 수수료가 과도한 경우 |
+| 거버넌스 | 원하는 운영 모델(중앙형·분산형)을 선택 |
+
+현금과 증권이 서로 다른 Synchronizer 에 놓이는 일은 실제로 생깁니다. 다만 그것은
+**자금 결제망과 예탁결제망의 운영 주체·참여 자격이 다르기 때문에 생기는 결과**이고,
+자산 종류가 원장을 나눈 것이 아닙니다. 같은 Synchronizer 에 현금과 증권을 함께 둘 수도
+있고, 공식 문서는 대부분의 애플리케이션에 Global Synchronizer 하나로 충분하다고 말합니다.
+
+Step 08 에서 Synchronizer 를 둘 띄워 이 상황을 직접 다룹니다.
 
 ---
 
@@ -139,8 +157,8 @@ Citi 가 Alice 에게 토큰화 예금 100 을 발행합니다. Alice 가 그것
 노드가 있다고 거래가 되지 않습니다. **주체**가 필요합니다.
 
 ```
-citi-participant 가 호스팅:          morganstanley-participant 가 호스팅:
-  Citi    (은행 법인)                   MorganStanley  (은행 법인)
+bank-participant 가 호스팅:          broker-participant 가 호스팅:
+  Bank    (은행 법인)                   Broker  (은행 법인)
   Alice   (개인 고객)                   Bob            (개인 고객)
   David   (개인 고객)
 ```
@@ -160,8 +178,8 @@ identifier                    namespace fingerprint
 (발급 시 준 힌트)              (이 신원을 발급·인가한 키의 지문)
 ```
 
-`Citi`, `Alice`, `David` 는 모두 Citi 가 발급했으므로 뒷부분이 같습니다. `Bob` 은
-Morgan Stanley 가 발급했으므로 다릅니다. 이름은 힌트일 뿐이고 **식별자는 전체
+`Bank`, `Alice`, `David` 는 모두 Bank 가 발급했으므로 뒷부분이 같습니다. `Bob` 은
+Broker 가 발급했으므로 다릅니다. 이름은 힌트일 뿐이고 **식별자는 전체
 문자열**입니다.
 
 #### Namespace 와 호스팅
@@ -178,13 +196,13 @@ Namespace 는 "누가 이 신원을 만들어 줬는가"이고, PartyToParticipa
 
 > **❓ 다른 Participant 로 이관되어 호스팅되는 Party 는 Namespace 도 바뀌나요?**
 >
-> 바뀌지 않습니다. Party ID 는 그대로 `Alice::1220<Citi 지문>` 입니다.
+> 바뀌지 않습니다. Party ID 는 그대로 `Alice::1220<Bank 지문>` 입니다.
 >
 > Namespace 는 발급 이력이고 호스팅은 별개의 매핑이기 때문입니다. 여권 발급국이
 > 거주지를 옮겨도 바뀌지 않는 것과 같습니다.
 >
 > 다만 **Namespace 키를 가진 쪽이 그 Party 의 Topology 변경을 인가**합니다. Alice 를
-> 다른 노드로 이관하거나 다중 호스팅하려면 Citi 의 서명이 필요하고, 이관한 뒤에도
+> 다른 노드로 이관하거나 다중 호스팅하려면 Bank 의 서명이 필요하고, 이관한 뒤에도
 > 그렇습니다.
 
 #### Hosted Party 와 External Party
@@ -200,7 +218,7 @@ Namespace 는 "누가 이 신원을 만들어 줬는가"이고, PartyToParticipa
 | Topology 변경 인가 | 발급 Participant 의 키 | 본인의 키 |
 | Participant 가 배신하면 | 속을 수 있음 | 서명 없이는 불가 |
 
-Alice 는 Citi 가 발급했으므로 Citi 키로 인가된 Hosted Party 입니다. 기술적으로 Citi 는
+Alice 는 Bank 가 발급했으므로 Bank 키로 인가된 Hosted Party 입니다. 기술적으로 Bank 는
 Alice 동의 없이 Alice 명의 Transaction 을 만들 수 있고, 이를 막는 것은 코드가 아니라
 규제와 감사입니다.
 
@@ -213,8 +231,8 @@ Charlie 처럼 자기 키를 쥐면 그것이 불가능해집니다. EVM 의 EOA
 
 ```
 alice-web            Alice 를 대리해 Ledger API 를 호출
-citi-settlement      Citi 를 대리 (결제·백오피스)
-citi-node-admin      노드 자체를 관리 — 어떤 Party 도 대리하지 않음
+bank-settlement      Bank 를 대리 (결제·백오피스)
+bank-node-admin      노드 자체를 관리 — 어떤 Party 도 대리하지 않음
 ```
 
 권한 종류입니다.
@@ -226,7 +244,7 @@ citi-node-admin      노드 자체를 관리 — 어떤 Party 도 대리하지 �
 | `CanReadAsAnyParty` | 모든 Party 조회 (감사용) |
 | `ParticipantAdmin` | 노드 관리. Party 생성, DAR 업로드·vetting |
 
-`citi-settlement` 는 노드 설정을 못 건드리고, `citi-node-admin` 은 원장 거래를 못
+`bank-settlement` 는 노드 설정을 못 건드리고, `bank-node-admin` 은 원장 거래를 못
 합니다. 서로 다른 층입니다.
 
 > **❓ Party 와 User 중 Contract 에 기록되는 것은 무엇인가요?**
@@ -243,12 +261,12 @@ citi-node-admin      노드 자체를 관리 — 어떤 Party 도 대리하지 �
 ### 셋의 관계
 
 ```
-citi-participant  ──1:N──▶  User      User 는 이 노드 안에만 존재
-citi-participant  ◀─N:M──▶  Party     한 노드가 여러 Party, 한 Party 를 여러 노드가
+bank-participant  ──1:N──▶  User      User 는 이 노드 안에만 존재
+bank-participant  ◀─N:M──▶  Party     한 노드가 여러 Party, 한 Party 를 여러 노드가
 Party             ◀─N:M──▶  User      한 Party 를 여러 계정이, 한 계정이 여러 Party 를
 ```
 
-Robinhood 는 첫 번째를 극단적으로 씁니다 — Participant 하나에 고객 Party 수만 개.
+Custodian 은 첫 번째를 극단적으로 씁니다 — Participant 하나에 고객 Party 수만 개.
 한 Party 를 여러 Participant 에 두는 것은 다중 호스팅이고, HA 와 BFT 를 위한
 구성입니다.
 
@@ -277,7 +295,7 @@ Solidity 의 contract 와 대응되지만 결정적으로 다릅니다. **Templa
 
 ### Contract
 
-**Template 을 실체화한 원장 위의 항목**입니다. "Alice 가 Citi 에 100 예금이 있다"는
+**Template 을 실체화한 원장 위의 항목**입니다. "Alice 가 Bank 에 100 예금이 있다"는
 사실 하나가 Contract 하나입니다.
 
 **Contract 는 절대 수정되지 않습니다.** 값을 바꾸려면 기존 것을 소비(archive)하고 새
@@ -288,7 +306,7 @@ Solidity 의 contract 와 대응되지만 결정적으로 다릅니다. **Templa
 >
 > 표준계약서 **양식**과, 실제로 서명되어 효력이 있는 계약서 **한 장**의 차이입니다.
 >
-> `Deposit` 은 양식이고 "Citi 와 Alice 가 100 에 서명한 그것"이 Contract 입니다.
+> `Deposit` 은 양식이고 "Bank 와 Alice 가 100 에 서명한 그것"이 Contract 입니다.
 > 같은 Template 에서 Contract 가 수천 개 나옵니다.
 
 ### Choice
@@ -306,7 +324,7 @@ choice Transfer
 | | 뜻 | 오해하기 쉬운 점 |
 | --- | --- | --- |
 | **Signatory** | 이 Contract 가 성립하려면 **동의가 필요한** Party | "마음대로 할 수 있는 주인"이 아닙니다 |
-| **Observer** | Contract 를 **볼 수 있지만** 권한은 없는 Party | SEC 같은 감독기관, 공시 대상 |
+| **Observer** | Contract 를 **볼 수 있지만** 권한은 없는 Party | Regulator 같은 감독기관, 공시 대상 |
 | **Controller** | 특정 Choice 를 **행사할 수 있는** Party | Signatory 가 아니어도 됩니다 |
 
 > **❓ Signatory 면 그 Contract 를 마음대로 할 수 있나요?**
@@ -314,7 +332,7 @@ choice Transfer
 > 아닙니다. Signatory 는 **"내 동의가 필요하다"** 이지 **"내가 무엇이든 할 수 있다"**
 > 가 아닙니다.
 >
-> 할 수 있는 일은 Template 에 선언된 Choice 뿐입니다. Citi 가 예금의 Signatory 라도,
+> 할 수 있는 일은 Template 에 선언된 Choice 뿐입니다. Bank 가 예금의 Signatory 라도,
 > 예금을 임의 계정으로 옮기는 Choice 가 Template 에 없으면 그 행위는 존재하지
 > 않습니다. Solidity 의 `onlyOwner withdraw()` 와 결정적으로 다른 지점입니다.
 
@@ -428,8 +446,8 @@ Transaction 은 Template 을 이렇게 지목합니다. 러너가 Contract 를 �
 > 그래서 "혼자 배포하면 전 세계가 호출"이 원리적으로 불가능합니다. 코드 배포는
 > 수수료를 내는 Transaction 이 아니라 **기관 간 합의를 동반한 운영 절차**입니다.
 >
-> 동시에 이것이 보호 장치입니다. Morgan Stanley 는 DAR 안의 소스를 감사하고, 마음에
-> 안 들면 vetting 하지 않으면 됩니다. Citi 도 DTCC 도 강제할 수 없습니다.
+> 동시에 이것이 보호 장치입니다. Broker 는 DAR 안의 소스를 감사하고, 마음에
+> 안 들면 vetting 하지 않으면 됩니다. Bank 도 Synchronizer 운영자도 강제할 수 없습니다.
 
 ---
 
@@ -437,22 +455,22 @@ Transaction 은 Template 을 이렇게 지목합니다. 러너가 Contract 를 �
 
 ### 발행
 
-예금 Contract 의 Signatory 는 Citi 와 Alice **둘 다**입니다. 그런데 Transaction 은 한
-Participant 가 제출합니다. Alice 는 Citi 고객이라 `citi-participant` 가 양쪽을 다
+예금 Contract 의 Signatory 는 Bank 와 Alice **둘 다**입니다. 그런데 Transaction 은 한
+Participant 가 제출합니다. Alice 는 Bank 고객이라 `bank-participant` 가 양쪽을 다
 호스팅하므로 이 경우는 한 번에 됩니다.
 
-Alice 가 Morgan Stanley 고객이었다면 불가능합니다. 어느 Participant 도 두 Party 의
+Alice 가 Broker 고객이었다면 불가능합니다. 어느 Participant 도 두 Party 의
 권한을 동시에 갖지 못합니다. 그래서 Daml 에는 **propose/accept** 패턴이 있습니다.
 
 ```
-1. Citi 가 자기 권한만으로 "발행 제안" Contract 를 만듭니다
-     signatory Citi, observer Alice
-     → Citi 혼자 서명하므로 혼자 만들 수 있습니다
+1. Bank 가 자기 권한만으로 "발행 제안" Contract 를 만듭니다
+     signatory Bank, observer Alice
+     → Bank 혼자 서명하므로 혼자 만들 수 있습니다
      → Alice 는 Observer 이므로 이 제안을 볼 수 있습니다
 
 2. Alice 가 그 제안의 Accept Choice 를 행사합니다
      → 권한이 합쳐집니다: [제안의 Signatory] + [Choice 의 Controller]
-                          = Citi + Alice
+                          = Bank + Alice
      → 이 합쳐진 권한으로 예금 Contract 를 생성합니다
 ```
 
@@ -464,18 +482,18 @@ Alice 가 Morgan Stanley 고객이었다면 불가능합니다. 어느 Participa
 Alice 가 Bob 에게 이체합니다. 이제 두 Participant 가 관여합니다.
 
 ```
-1. citi-participant (제출)
+1. bank-participant (제출)
    Transaction 을 계산 → 당사자별 view 로 쪼개 각각 암호화 → Sequencer 에 전송
 
-2. dtcc-sequencer
+2. public-sequencer
    순서를 부여해 수신자들에게 전달 (Envelope 만 보므로 내용은 모름)
 
-3. citi-participant, morganstanley-participant (검증)
+3. bank-participant, broker-participant (검증)
    각자 자기 view 를 복호화 → vetting 된 Package ID 의 코드로 Daml 재실행
    → 결과가 제출된 것과 같은가? 권한은 충족되는가? 이미 소비된 Contract 는 아닌가?
    → 확인 응답(Confirmation Response) 전송
 
-4. dtcc-mediator
+4. public-mediator
    응답을 모아 정족수 확인 → 최종 판정 발행 (해시만 봄)
 
 5. 각 Participant
@@ -483,14 +501,14 @@ Alice 가 Bob 에게 이체합니다. 이제 두 Participant 가 관여합니다
 ```
 
 **제출자가 계산한 결과를 아무도 신뢰하지 않습니다.** 각자 독립적으로 재실행합니다.
-Citi 가 악의를 가져도 Morgan Stanley 의 노드가 거부합니다.
+Bank 가 악의를 가져도 Broker 의 노드가 거부합니다.
 
 ### Active Contract Store (ACS)
 
 **Participant 가 보관하는, 아직 소비되지 않은 Contract 들의 집합**입니다. 앞서 말한
 대로 이것이 곧 "현재 상태"입니다.
 
-전역 사본이 아닙니다. `citi-participant` 의 ACS 와 `morganstanley-participant` 의 ACS
+전역 사본이 아닙니다. `bank-participant` 의 ACS 와 `broker-participant` 의 ACS
 는 내용이 다릅니다. 각자 자기가 이해관계자인 Contract 만 갖습니다.
 
 ### Transaction / Offset
@@ -527,11 +545,11 @@ Alice → Bob 이체를 누가 아는지 봅니다.
 | | 보는가 | 왜 |
 | --- | --- | --- |
 | `Alice`, `Bob` | ✅ | 당사자 (Signatory) |
-| `Citi` | ✅ | 예금 Contract 의 Signatory (발행자) |
-| `MorganStanley` | 설계에 따라 | Stakeholder 로 넣었다면 |
-| `SEC` | Observer 로 넣었다면 ✅ | **설계에 명시해야 보입니다** |
-| `David`, Goldman Sachs | ❌ | **데이터가 도달조차 하지 않습니다** |
-| `dtcc-sequencer`, `dtcc-mediator` | ❌ | Envelope 과 해시만 |
+| `Bank` | ✅ | 예금 Contract 의 Signatory (발행자) |
+| `Broker` | 설계에 따라 | Stakeholder 로 넣었다면 |
+| `Regulator` | Observer 로 넣었다면 ✅ | **설계에 명시해야 보입니다** |
+| `David`, Issuer | ❌ | **데이터가 도달조차 하지 않습니다** |
+| `public-sequencer`, `public-mediator` | ❌ | Envelope 과 해시만 |
 
 David 가 Alice 와 **같은 은행 고객이고 같은 Participant 에 있는데도** 보지 못한다는
 점에 주목할 것입니다. 프라이버시의 단위는 기관도 노드도 아니라 **Party** 입니다.
@@ -639,15 +657,15 @@ EVM 을 알고 오면 찾게 되지만 없는 것들입니다.
 
 답할 수 있으면 다음 Step 으로 갑니다.
 
-1. `morganstanley-participant` 는 Citi 내부 거래를 볼 수 있습니까? 왜 그렇습니까?
+1. `broker-participant` 는 Bank 내부 거래를 볼 수 있습니까? 왜 그렇습니까?
 2. `Alice` 와 `alice-web` 중 Contract 에 기록되는 것은 무엇입니까?
-3. DTCC 가 Alice → Bob 이체 내용을 볼 수 있습니까?
-4. 예금 Template 에 `Transfer` Choice 가 없으면 Citi 가 Alice 의 예금을 옮길 수 있습니까?
-5. Morgan Stanley 가 어떤 Package 를 vetting 하지 않으면 무슨 일이 일어납니까?
+3. Synchronizer 운영자가 Alice → Bob 이체 내용을 볼 수 있습니까?
+4. 예금 Template 에 `Transfer` Choice 가 없으면 Bank 가 Alice 의 예금을 옮길 수 있습니까?
+5. Broker 가 어떤 Package 를 vetting 하지 않으면 무슨 일이 일어납니까?
 6. 예금 금액을 100 에서 200 으로 "수정"하면 Contract ID 는 어떻게 됩니까?
-7. Signatory 가 Citi 와 Alice 둘인 Contract 를 Citi 혼자 만들 수 있습니까?
+7. Signatory 가 Bank 와 Alice 둘인 Contract 를 Bank 혼자 만들 수 있습니까?
 8. `Alice` 와 `Charlie` 의 차이는 무엇입니까?
-9. Alice 를 Morgan Stanley 노드로 이관하면 Party ID 는 어떻게 됩니까?
+9. Alice 를 Broker 노드로 이관하면 Party ID 는 어떻게 됩니까?
 10. Participant 가 저장하는 "state" 는 무엇입니까?
 11. Package 이름과 Package ID 중 코드를 고치면 바뀌는 것은 무엇입니까?
 

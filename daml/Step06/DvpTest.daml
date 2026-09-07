@@ -6,8 +6,8 @@
 
 ■ 등장 인물
 
-  Citi           현금(토큰화 예금) 발행
-  GoldmanSachs   채권 발행
+  Bank           현금(토큰화 예금) 발행
+  Issuer   채권 발행
   Bob            채권 보유. 매도자
   Alice          현금 보유. 매수자
   David          제3자
@@ -53,30 +53,30 @@ import Step06.Dvp
 
 data Setup = Setup
   with
-    citi : Party
-    gs : Party
+    bank : Party
+    issuer : Party
     alice : Party
     bob : Party
     david : Party
 
 setup : Script Setup
 setup = do
-  citi <- allocateParty "Citi"
-  gs <- allocateParty "GoldmanSachs"
+  bank <- allocateParty "Bank"
+  issuer <- allocateParty "Issuer"
   alice <- allocateParty "Alice"
   bob <- allocateParty "Bob"
   david <- allocateParty "David"
-  pure Setup {citi, gs, alice, bob, david}
+  pure Setup {bank, issuer, alice, bob, david}
 
 mkCash : Setup -> Party -> Decimal -> Script (ContractId Cash)
-mkCash Setup{citi} owner amount =
-  submit [citi, owner] do
-    createCmd Cash with bank = citi, owner, amount
+mkCash Setup{bank} owner amount =
+  submit [bank, owner] do
+    createCmd Cash with bank, owner, amount
 
 mkBond : Setup -> Party -> Decimal -> Script (ContractId Bond)
-mkBond Setup{gs} owner quantity =
-  submit [gs, owner] do
-    createCmd Bond with issuer = gs, owner, isin = "US0000000001", quantity
+mkBond Setup{issuer} owner quantity =
+  submit [issuer, owner] do
+    createCmd Bond with issuer, owner, isin = "US0000000001", quantity
 
 -- 단독 이전 차단 --------------------------------------------------------------
 
@@ -102,7 +102,7 @@ testBobCannotMoveBondAlone = do
 
 testSettle : Script ()
 testSettle = do
-  s@Setup{citi, gs, alice, bob} <- setup
+  s@Setup{bank, issuer, alice, bob} <- setup
 
   bondCid <- mkBond s bob 10.0
   cashCid <- mkCash s alice 100.0
@@ -115,12 +115,12 @@ testSettle = do
 
   Some newBond <- queryContractId alice newBondCid
   newBond.owner === alice
-  newBond.issuer === gs
+  newBond.issuer === issuer
   newBond.quantity === 10.0
 
   Some newCash <- queryContractId bob newCashCid
   newCash.owner === bob
-  newCash.bank === citi
+  newCash.bank === bank
   newCash.amount === 100.0
 
 testSettleIsSingleTransaction : Script ()

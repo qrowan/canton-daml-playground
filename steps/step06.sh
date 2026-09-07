@@ -75,8 +75,8 @@ cat <<'BANNER'
  Bob 이 채권을 팔고 Alice 가 현금을 지급합니다.
  두 이전이 하나의 Transaction 안에서 일어나야 합니다.
 
-   Citi           현금 발행
-   GoldmanSachs   채권 발행
+   Bank           현금 발행
+   Issuer   채권 발행
    Bob            채권 보유. 매도자
    Alice          현금 보유. 매수자
 
@@ -169,15 +169,15 @@ pause
 cat <<'AUTH'
     Settle 을 행사하는 시점
 
-      DvpProposal 의 signatory = GoldmanSachs, Bob
+      DvpProposal 의 signatory = Issuer, Bob
       Settle 의 controller     = Alice
       ─────────────────────────────────────────
-      이 지점의 권한            = GoldmanSachs, Bob, Alice
+      이 지점의 권한            = Issuer, Bob, Alice
 
 
     채권 다리 — 직접 create
 
-      만들려는 Bond 의 signatory = GoldmanSachs, Alice        → 충족
+      만들려는 Bond 의 signatory = Issuer, Alice        → 충족
 
 
     현금 다리 — 중첩 exercise
@@ -187,13 +187,13 @@ cat <<'AUTH'
           → 둘 다 현재 권한에 있으므로 행사 가능
 
         그 안의 권한 = [Cash 의 signatory] + [controller]
-                     = (Citi, Alice) + (Alice, Bob)
-                     = Citi, Alice, Bob
+                     = (Bank, Alice) + (Alice, Bob)
+                     = Bank, Alice, Bob
 
-        만들려는 Cash 의 signatory = Citi, Bob                 → 충족
+        만들려는 Cash 의 signatory = Bank, Bob                 → 충족
 
 AUTH
-say "${B}Citi 는 이 Transaction 에 아무 행위도 하지 않았는데 권한이 실렸습니다.${R}"
+say "${B}Bank 는 이 Transaction 에 아무 행위도 하지 않았는데 권한이 실렸습니다.${R}"
 printf '\n'
 say "Cash Contract 의 signatory 로서 이미 동의해 둔 것이, Choice 를 통해"
 say "흘러온 것입니다."
@@ -270,7 +270,7 @@ cat <<SUMMARY
   원자적 DvP          두 이전이 한 Transaction. 결제 리스크가 구조적으로 없다
   controller 둘        양쪽 권한이 있는 Transaction 안에서만 행사 가능
   중첩 exercise        Contract 의 signatory 권한을 끌어오는 수단
-  발행자 오프라인       Citi 는 행위하지 않았지만 권한이 실린다
+  발행자 오프라인       Bank 는 행위하지 않았지만 권한이 실린다
   잠금                제안이 원본을 소비해 이중 매도를 막는다
   한쪽만 잠긴다         현금은 결제 시점에 지정되므로 실패 가능성이 남는다
 

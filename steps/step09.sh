@@ -34,8 +34,8 @@ TOTAL=12
 WORK="$ROOT/.step09"
 LOG="$WORK/canton.log"
 
-CITI_API=http://localhost:5013
-MS_API=http://localhost:5023
+BANK_API=http://localhost:5013
+BROKER_API=http://localhost:5023
 
 V1="$ROOT/upgrade/v1"
 V2="$ROOT/upgrade/v2"
@@ -93,7 +93,7 @@ cat <<'BANNER'
    upgrade/v1     step09-voucher 1.0.0
    upgrade/v2     step09-voucher 2.0.0
 
- 노드 구성은 Step 05 의 것을 그대로 씁니다 — citi, morganstanley,
+ 노드 구성은 Step 05 의 것을 그대로 씁니다 — bank, broker,
  그리고 Synchronizer 하나. 이 Step 에서 달라지는 것은 패키지뿐입니다.
 BANNER
 printf '%s\n' "$R"
@@ -226,7 +226,7 @@ if [ "$READY" != 1 ]; then
     pkill -f 'daemon -c canton/'"
 fi
 
-CITI=$(grep  '^CITI='  "$LOG" | tail -1 | cut -d= -f2)
+BANK=$(grep  '^BANK='  "$LOG" | tail -1 | cut -d= -f2)
 ALICE=$(grep '^ALICE=' "$LOG" | tail -1 | cut -d= -f2)
 BOB=$(grep   '^BOB='   "$LOG" | tail -1 | cut -d= -f2)
 ok "노드 4개 기동"
@@ -237,8 +237,8 @@ upload() { # $1=api $2=dar
 }
 
 printf '\n%s$ POST /v2/packages   (DAR 을 그대로 본문에 싣습니다)%s\n\n' "$YE" "$R"
-printf '  citi           HTTP %s\n' "$(upload "$CITI_API" "$DAR1")"
-printf '  morganstanley  HTTP %s\n' "$(upload "$MS_API"  "$DAR1")"
+printf '  bank           HTTP %s\n' "$(upload "$BANK_API" "$DAR1")"
+printf '  broker  HTTP %s\n' "$(upload "$BROKER_API"  "$DAR1")"
 
 printf '\n'
 say "Step 05 에서는 bootstrap 콘솔로 올렸습니다. 운영 중인 노드에는 이렇게"
@@ -299,31 +299,31 @@ print(cs[0]['contractId'] if cs else '')" 2>/dev/null)
   return 1
 }
 
-mkuser "$CITI_API" citi-app  "$CITI"
-mkuser "$CITI_API" alice-web "$ALICE"
-mkuser "$MS_API"   bob-web   "$BOB"
+mkuser "$BANK_API" bank-app  "$BANK"
+mkuser "$BANK_API" alice-web "$ALICE"
+mkuser "$BROKER_API"   bob-web   "$BOB"
 
 # ─── 5 ───────────────────────────────────────────────────────────────────────
 
 title "v1 로 상품권을 발행한다"
-say "Citi 가 Alice 와 Bob 에게 각각 발행합니다. Bob 은 morganstanley 노드에"
+say "Bank 가 Alice 와 Bob 에게 각각 발행합니다. Bob 은 broker 노드에"
 say "있지만 상품권은 발행사 단독 서명이므로 한 Transaction 으로 됩니다."
 pause
 
 VT1="$PKG1:Voucher:Voucher"
 
 printf '%s$ Alice 앞으로 50%s\n\n' "$YE" "$R"
-submit "$CITI_API" citi-app "$CITI" \
-  "[{\"CreateCommand\":{\"templateId\":\"$VT1\",\"createArguments\":{\"issuer\":\"$CITI\",\"owner\":\"$ALICE\",\"amount\":\"50.0\"}}}]" | result
+submit "$BANK_API" bank-app "$BANK" \
+  "[{\"CreateCommand\":{\"templateId\":\"$VT1\",\"createArguments\":{\"issuer\":\"$BANK\",\"owner\":\"$ALICE\",\"amount\":\"50.0\"}}}]" | result
 
 printf '\n%s$ Bob 앞으로 70%s\n\n' "$YE" "$R"
-submit "$CITI_API" citi-app "$CITI" \
-  "[{\"CreateCommand\":{\"templateId\":\"$VT1\",\"createArguments\":{\"issuer\":\"$CITI\",\"owner\":\"$BOB\",\"amount\":\"70.0\"}}}]" | result
+submit "$BANK_API" bank-app "$BANK" \
+  "[{\"CreateCommand\":{\"templateId\":\"$VT1\",\"createArguments\":{\"issuer\":\"$BANK\",\"owner\":\"$BOB\",\"amount\":\"70.0\"}}}]" | result
 
-OLD_CID=$(find_cid "$CITI_API" "$ALICE" 50) || die "Alice 의 상품권을 찾지 못했습니다"
+OLD_CID=$(find_cid "$BANK_API" "$ALICE" 50) || die "Alice 의 상품권을 찾지 못했습니다"
 
 printf '\n%s$ Alice 시점%s\n\n' "$YE" "$R"
-show "$CITI_API" "$ALICE"
+show "$BANK_API" "$ALICE"
 
 printf '\n'
 say "${B}expiresAt 필드가 아예 없습니다.${R} v1 Template 에 그런 필드가 없기"
@@ -473,20 +473,20 @@ rm -rf "$BROKEN"
 
 # ─── 8 ───────────────────────────────────────────────────────────────────────
 
-title "v2 를 올린다 — 우선 citi 에만"
+title "v2 를 올린다 — 우선 bank 에만"
 say "일부러 한쪽에만 올립니다. 11단계에서 이 상태가 무엇을 뜻하는지 봅니다."
 pause
 
-printf '%s$ POST %s/v2/packages   (v2)%s\n\n' "$YE" "$CITI_API" "$R"
-printf '  citi           HTTP %s\n' "$(upload "$CITI_API" "$DAR2")"
-printf '  morganstanley  올리지 않습니다\n'
+printf '%s$ POST %s/v2/packages   (v2)%s\n\n' "$YE" "$BANK_API" "$R"
+printf '  bank           HTTP %s\n' "$(upload "$BANK_API" "$DAR2")"
+printf '  broker  올리지 않습니다\n'
 sleep 3
 
 printf '\n'
 say "노드를 멈추지 않았고, 원장에 있던 Contract 도 그대로입니다."
 printf '\n'
 printf '%s$ Alice 시점%s\n\n' "$YE" "$R"
-show "$CITI_API" "$ALICE"
+show "$BANK_API" "$ALICE"
 printf '\n'
 say "${B}v1 로 저장된 채 그대로입니다.${R} 새 버전을 올렸다고 기존 Contract 가"
 say "다시 쓰이지 않습니다. 원장은 그대로 두고 코드만 하나 더 생긴 것입니다."
@@ -501,12 +501,12 @@ pause
 VT2="$PKG2:Voucher:Voucher"
 
 printf '%s$ exercise SetExpiry  (templateId = v2)%s\n\n' "$YE" "$R"
-submit "$CITI_API" citi-app "$CITI" \
+submit "$BANK_API" bank-app "$BANK" \
   "[{\"ExerciseCommand\":{\"templateId\":\"$VT2\",\"contractId\":\"$OLD_CID\",\"choice\":\"SetExpiry\",\"choiceArgument\":{\"deadline\":\"2030-01-01T00:00:00Z\"}}}]" | result
 
 sleep 2
 printf '\n%s$ Alice 시점%s\n\n' "$YE" "$R"
-show "$CITI_API" "$ALICE"
+show "$BANK_API" "$ALICE"
 
 printf '\n'
 ok "v1 으로 만들어진 Contract 를 v2 코드가 읽고, v2 로 다시 만들었습니다"
@@ -543,30 +543,30 @@ cat <<'REF'
 
 REF
 printf '%s$ Alice 앞으로 #step09-voucher 로 발행%s\n\n' "$YE" "$R"
-submit "$CITI_API" citi-app "$CITI" \
-  "[{\"CreateCommand\":{\"templateId\":\"#step09-voucher:Voucher:Voucher\",\"createArguments\":{\"issuer\":\"$CITI\",\"owner\":\"$ALICE\",\"amount\":\"11.0\"}}}]" | result
+submit "$BANK_API" bank-app "$BANK" \
+  "[{\"CreateCommand\":{\"templateId\":\"#step09-voucher:Voucher:Voucher\",\"createArguments\":{\"issuer\":\"$BANK\",\"owner\":\"$ALICE\",\"amount\":\"11.0\"}}}]" | result
 
 sleep 2
 printf '\n%s$ Alice 시점%s\n\n' "$YE" "$R"
-show "$CITI_API" "$ALICE"
+show "$BANK_API" "$ALICE"
 
 printf '\n'
-ok "v2 로 풀렸습니다. Alice 는 citi 노드에 있고 citi 는 v2 를 갖고 있습니다"
+ok "v2 로 풀렸습니다. Alice 는 bank 노드에 있고 bank 는 v2 를 갖고 있습니다"
 
 # ─── 11 ──────────────────────────────────────────────────────────────────────
 
 title "혼자서는 업그레이드할 수 없습니다"
-say "같은 명령을 Bob 앞으로 보냅니다. Bob 은 morganstanley 노드에 있고 그 노드는"
+say "같은 명령을 Bob 앞으로 보냅니다. Bob 은 broker 노드에 있고 그 노드는"
 say "아직 v2 가 없습니다."
 pause
 
 printf '%s$ Bob 앞으로 #step09-voucher 로 발행 — 같은 명령입니다%s\n\n' "$YE" "$R"
-submit "$CITI_API" citi-app "$CITI" \
-  "[{\"CreateCommand\":{\"templateId\":\"#step09-voucher:Voucher:Voucher\",\"createArguments\":{\"issuer\":\"$CITI\",\"owner\":\"$BOB\",\"amount\":\"22.0\"}}}]" | result
+submit "$BANK_API" bank-app "$BANK" \
+  "[{\"CreateCommand\":{\"templateId\":\"#step09-voucher:Voucher:Voucher\",\"createArguments\":{\"issuer\":\"$BANK\",\"owner\":\"$BOB\",\"amount\":\"22.0\"}}}]" | result
 
 sleep 2
-printf '\n%s$ Bob 시점 (morganstanley 노드)%s\n\n' "$YE" "$R"
-show "$MS_API" "$BOB"
+printf '\n%s$ Bob 시점 (broker 노드)%s\n\n' "$YE" "$R"
+show "$BROKER_API" "$BOB"
 
 printf '\n'
 say "${B}같은 명령인데 v1 으로 풀렸습니다.${R} Canton 이 참여자 전원의 vetting 상태를"
@@ -574,26 +574,26 @@ say "보고 ${B}모두가 가진 가장 높은 버전${R}을 고른 것입니다
 pause
 
 printf '%s$ Bob 앞으로 v2 를 못박아서 발행%s\n\n' "$YE" "$R"
-submit "$CITI_API" citi-app "$CITI" \
-  "[{\"CreateCommand\":{\"templateId\":\"$VT2\",\"createArguments\":{\"issuer\":\"$CITI\",\"owner\":\"$BOB\",\"amount\":\"33.0\",\"expiresAt\":null}}}]" | result
+submit "$BANK_API" bank-app "$BANK" \
+  "[{\"CreateCommand\":{\"templateId\":\"$VT2\",\"createArguments\":{\"issuer\":\"$BANK\",\"owner\":\"$BOB\",\"amount\":\"33.0\",\"expiresAt\":null}}}]" | result
 
 printf '\n'
 warn "거부되었습니다. 상대 노드가 모르는 코드로는 거래가 성립하지 않습니다."
 printf '\n'
-say "이제 morganstanley 에도 올립니다."
+say "이제 broker 에도 올립니다."
 pause
 
-printf '%s$ POST %s/v2/packages   (v2)%s\n\n' "$YE" "$MS_API" "$R"
-printf '  morganstanley  HTTP %s\n' "$(upload "$MS_API" "$DAR2")"
+printf '%s$ POST %s/v2/packages   (v2)%s\n\n' "$YE" "$BROKER_API" "$R"
+printf '  broker  HTTP %s\n' "$(upload "$BROKER_API" "$DAR2")"
 sleep 5
 
 printf '\n%s$ Bob 앞으로 다시 #step09-voucher 로 발행%s\n\n' "$YE" "$R"
-submit "$CITI_API" citi-app "$CITI" \
-  "[{\"CreateCommand\":{\"templateId\":\"#step09-voucher:Voucher:Voucher\",\"createArguments\":{\"issuer\":\"$CITI\",\"owner\":\"$BOB\",\"amount\":\"44.0\"}}}]" | result
+submit "$BANK_API" bank-app "$BANK" \
+  "[{\"CreateCommand\":{\"templateId\":\"#step09-voucher:Voucher:Voucher\",\"createArguments\":{\"issuer\":\"$BANK\",\"owner\":\"$BOB\",\"amount\":\"44.0\"}}}]" | result
 
 sleep 2
 printf '\n%s$ Bob 시점%s\n\n' "$YE" "$R"
-show "$MS_API" "$BOB"
+show "$BROKER_API" "$BOB"
 
 printf '\n'
 ok "이번에는 v2 로 풀렸습니다"
@@ -635,13 +635,13 @@ SUMMARY
 
 if [ "$KEEP" = 1 ]; then
   say "노드가 계속 실행 중입니다."
-  note "  export CITI='$CITI'"
+  note "  export BANK='$BANK'"
   note "  export ALICE='$ALICE'"
   note "  export BOB='$BOB'"
   note "  export PKG1=$PKG1"
   note "  export PKG2=$PKG2"
-  note "  citi JSON API          $CITI_API"
-  note "  morganstanley JSON API $MS_API"
+  note "  bank JSON API          $BANK_API"
+  note "  broker JSON API $BROKER_API"
 else
   say "노드를 종료합니다. 인메모리이므로 Party·User·Contract 가 모두 사라집니다."
   note "계속 살려두려면: ./steps/step09.sh --keep"

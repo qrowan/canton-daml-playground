@@ -21,8 +21,8 @@ Step 을 순서대로 거치면서 그 목표에 도달합니다. 각 Step 은 *
 | 09 | [업그레이드](steps/Step09Upgrade.md) | `step09.sh` | 배포된 Template 의 새 버전. 규칙, vetting, 버전 해석 |
 | 10 | [애플리케이션 연동](steps/Step10Integration.md) | `step10.sh` | offset 과 ACS 스냅샷. 원장을 따라가는 애플리케이션 |
 
-시나리오는 하나로 이어집니다 — **Citi 가 Alice 에게 토큰화 예금을 발행하고, Alice 가
-Bob 에게 이체하고, Bob 이 Goldman Sachs 의 채권과 교환합니다. 마지막에는 현금과 증권이
+시나리오는 하나로 이어집니다 — **Bank 가 Alice 에게 토큰화 예금을 발행하고, Alice 가
+Bob 에게 이체하고, Bob 이 Issuer 의 채권과 교환합니다. 마지막에는 현금과 증권이
 서로 다른 원장에 있는 상황을 다룹니다.** 등장 인물은 Step 01 에 정의되어 있습니다.
 
 ## 사전 준비
@@ -214,7 +214,7 @@ Step 별로 모듈을 나눈 것은 이 저장소의 튜토리얼 구성이며 �
 
 | 계층 | 예 |
 | --- | --- |
-| Participant 노드 | `citi-participant`, `morganstanley-participant` |
-| Synchronizer 노드 | `dtcc-sequencer`, `dtcc-mediator` |
-| Party | `Citi`, `Alice`, `Bob` |
-| User | `alice-web`, `citi-settlement`, `citi-node-admin` |
+| Participant 노드 | `bank-participant`, `broker-participant` |
+| Synchronizer 노드 | `public-sequencer`, `public-mediator` |
+| Party | `Bank`, `Alice`, `Bob` |
+| User | `alice-web`, `bank-settlement`, `bank-node-admin` |

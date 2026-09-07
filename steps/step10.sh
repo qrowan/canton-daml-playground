@@ -178,7 +178,7 @@ if [ "$READY" != 1 ]; then
     pkill -f 'daemon -c canton/'"
 fi
 
-CITI=$(grep  '^CITI='  "$LOG" | tail -1 | cut -d= -f2)
+BANK=$(grep  '^BANK='  "$LOG" | tail -1 | cut -d= -f2)
 ALICE=$(grep '^ALICE=' "$LOG" | tail -1 | cut -d= -f2)
 ok "노드 4개 기동"
 
@@ -186,18 +186,18 @@ PKG=$(dpm inspect-dar "$DAR" 2>/dev/null | grep -oE '[0-9a-f]{64}' | head -1)
 DEP="$PKG:Step04.Deposit:Deposit"
 
 curl -s -X POST "$API/v2/users" -H 'Content-Type: application/json' \
-  -d "{\"user\":{\"id\":\"app\",\"primaryParty\":\"\",\"isDeactivated\":false,\"metadata\":{\"resourceVersion\":\"\",\"annotations\":{}},\"identityProviderId\":\"\"},\"rights\":[{\"kind\":{\"CanActAs\":{\"value\":{\"party\":\"$CITI\"}}}},{\"kind\":{\"CanActAs\":{\"value\":{\"party\":\"$ALICE\"}}}}]}" >/dev/null
+  -d "{\"user\":{\"id\":\"app\",\"primaryParty\":\"\",\"isDeactivated\":false,\"metadata\":{\"resourceVersion\":\"\",\"annotations\":{}},\"identityProviderId\":\"\"},\"rights\":[{\"kind\":{\"CanActAs\":{\"value\":{\"party\":\"$BANK\"}}}},{\"kind\":{\"CanActAs\":{\"value\":{\"party\":\"$ALICE\"}}}}]}" >/dev/null
 
 # ─── 헬퍼 ────────────────────────────────────────────────────────────────────
 
 submit() { # $1=commandId $2=commands(json)
   curl -s -X POST "$API/v2/commands/submit-and-wait" -H 'Content-Type: application/json' \
-    -d "{\"commands\":$2,\"commandId\":\"$1\",\"userId\":\"app\",\"actAs\":[\"$CITI\",\"$ALICE\"],\"readAs\":[]}"
+    -d "{\"commands\":$2,\"commandId\":\"$1\",\"userId\":\"app\",\"actAs\":[\"$BANK\",\"$ALICE\"],\"readAs\":[]}"
 }
 
 deposit_cmd() { # $1=amount
   printf '[{"CreateCommand":{"templateId":"%s","createArguments":{"bank":"%s","owner":"%s","amount":"%s"}}}]' \
-    "$DEP" "$CITI" "$ALICE" "$1"
+    "$DEP" "$BANK" "$ALICE" "$1"
 }
 
 ledger_end() { curl -s "$API/v2/state/ledger-end" | jq_ 'print(d["offset"])'; }
@@ -539,7 +539,7 @@ SUMMARY
 
 if [ "$KEEP" = 1 ]; then
   say "노드가 계속 실행 중입니다."
-  note "  export CITI='$CITI'"
+  note "  export BANK='$BANK'"
   note "  export ALICE='$ALICE'"
   note "  export PKG=$PKG"
   note "  JSON API      $API"

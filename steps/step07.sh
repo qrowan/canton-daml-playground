@@ -75,10 +75,10 @@ cat <<'BANNER'
  지금까지 프라이버시는 늘 "안 보인다" 쪽이었습니다.
  이번에는 반대입니다 — 보여야 하는 것을 어떻게 보이게 하는가.
 
-   Citi       발행 은행
-   Alice      Citi 의 고객
+   Bank       발행 은행
+   Alice      Bank 의 고객
    Bob        이체 상대
-   SEC        감독기관. 상시 공시 대상
+   Regulator        감독기관. 상시 공시 대상
    Auditor    외부 감사인. 필요할 때만 공시
    David      제3자. 아무것도 못 봄
 BANNER
@@ -97,9 +97,9 @@ mkdir -p "$ROOT/.step07"
 
 # ─── 1 ───────────────────────────────────────────────────────────────────────
 
-title "문제 — SEC 는 당사자가 아닙니다"
-say "SEC 는 Citi 가 발행하는 모든 예금을 감독해야 합니다."
-say "그런데 SEC 는 예금 계약의 Signatory 가 아닙니다. 당사자가 아니기 때문입니다."
+title "문제 — Regulator 는 당사자가 아닙니다"
+say "Regulator 는 Bank 가 발행하는 모든 예금을 감독해야 합니다."
+say "그런데 Regulator 는 예금 계약의 Signatory 가 아닙니다. 당사자가 아니기 때문입니다."
 printf '\n'
 say "Step 02 에서 David 가 Alice 의 예금을 못 본 것과 같은 상황입니다."
 say "Stakeholder 가 아니면 데이터가 도달하지 않습니다."
@@ -123,8 +123,8 @@ show "$SRC" "^template RegulatedDeposit" 11
 printf '\n'
 say "regulator 를 필드로 갖고 observer 로 선언합니다."
 printf '\n'
-say "${B}이 Template 으로 만든 모든 Contract 는 처음부터 SEC 에게 보입니다.${R}"
-note "Observer 는 Stakeholder 에 포함되므로 그 Contract 가 SEC 의 Participant 에도"
+say "${B}이 Template 으로 만든 모든 Contract 는 처음부터 Regulator 에게 보입니다.${R}"
+note "Observer 는 Stakeholder 에 포함되므로 그 Contract 가 Regulator 의 Participant 에도"
 note "전달되고, 확인 프로토콜에서 Informee 가 됩니다."
 
 # ─── 3 ───────────────────────────────────────────────────────────────────────
@@ -146,7 +146,7 @@ say "법무·컴플라이언스가 관여해야 하는 지점이고, 개발자�
 # ─── 4 ───────────────────────────────────────────────────────────────────────
 
 title "Observer 는 권한을 주지 않습니다"
-say "SEC 는 모든 예금을 봅니다. 그런데 아무것도 못 합니다."
+say "Regulator 는 모든 예금을 봅니다. 그런데 아무것도 못 합니다."
 pause
 
 show "$TST" "^testRegulatorCannotTransfer" 8
@@ -167,18 +167,18 @@ show "$SRC" "choice Freeze" 6
 
 printf '\n'
 cat <<'AUTH'
-    signatory  = Citi, Alice
-    controller = SEC
+    signatory  = Bank, Alice
+    controller = Regulator
     ─────────────────────────
-    권한        = Citi, Alice, SEC
+    권한        = Bank, Alice, Regulator
 
-    만들려는 Contract 의 signatory = Citi, Alice        → 충족
+    만들려는 Contract 의 signatory = Bank, Alice        → 충족
 
 AUTH
-say "SEC 는 Signatory 가 아닌데도 Choice 를 행사합니다."
+say "Regulator 는 Signatory 가 아닌데도 Choice 를 행사합니다."
 say "Step 03 에서 본 대로 ${B}Controller 는 Signatory 와 별개${R}이기 때문입니다."
 printf '\n'
-note "그리고 Alice 는 이 Template 을 수락한 시점에 'SEC 가 동결할 수 있다' 에"
+note "그리고 Alice 는 이 Template 을 수락한 시점에 'Regulator 가 동결할 수 있다' 에"
 note "이미 동의했습니다. 약관에 서명하는 것과 같습니다."
 
 # ─── 6 ───────────────────────────────────────────────────────────────────────
@@ -197,7 +197,7 @@ note "Choice 본문이 거부합니다."
 # ─── 7 ───────────────────────────────────────────────────────────────────────
 
 title "선택적 공시 — 필요할 때만 열기"
-say "SEC 는 상시 공시입니다. 외부 감사인은 그렇지 않습니다."
+say "Regulator 는 상시 공시입니다. 외부 감사인은 그렇지 않습니다."
 pause
 
 show "$SRC" "choice Publish" 6
@@ -242,9 +242,9 @@ cat <<SUMMARY
 
   Observer           서명 없이 가시성만. Stakeholder 에 포함된다
   공시는 설계다        Template 이 공시 범위를 확정한다. 나중에 못 바꾼다
-  가시성 ≠ 권한       SEC 는 모든 예금을 보지만 아무것도 못 한다
+  가시성 ≠ 권한       Regulator 는 모든 예금을 보지만 아무것도 못 한다
   개입하려면 Choice   Freeze 처럼 Controller 를 명시해야 행사할 수 있다
-  Controller≠Signatory SEC 는 Signatory 가 아닌데도 Choice 를 행사한다
+  Controller≠Signatory Regulator 는 Signatory 가 아닌데도 Choice 를 행사한다
   상태 검사           동결은 권한이 아니라 Choice 본문의 assertMsg 로 막는다
   선택적 공시          Observer 추가도 archive + create. Contract ID 가 바뀐다
   되돌릴 수 없다       Unpublish 는 앞으로만 막는다. 본 것은 지우지 못한다

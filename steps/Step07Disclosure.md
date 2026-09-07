@@ -20,10 +20,10 @@ Step 02~06 에서 프라이버시는 늘 **"안 보인다"** 쪽이었습니다.
 
 | 이름 | 역할 |
 | --- | --- |
-| **Citi** | 발행 은행 |
-| **Alice** | Citi 의 고객 |
+| **Bank** | 발행 은행 |
+| **Alice** | Bank 의 고객 |
 | **Bob** | 이체 상대 |
-| **SEC** | 감독기관. 상시 공시 대상 |
+| **Regulator** | 감독기관. 상시 공시 대상 |
 | **Auditor** | 외부 감사인. 필요할 때만 공시 |
 | **David** | 제3자. 아무것도 못 봄 |
 
@@ -36,7 +36,7 @@ Step 02~06 에서 프라이버시는 늘 **"안 보인다"** 쪽이었습니다.
 
 ## 문제
 
-SEC 는 Citi 가 발행하는 모든 예금을 감독해야 합니다. 그런데 **SEC 는 예금 계약의
+Regulator 는 Bank 가 발행하는 모든 예금을 감독해야 합니다. 그런데 **Regulator 는 예금 계약의
 Signatory 가 아닙니다.** 당사자가 아니기 때문입니다.
 
 Step 02 에서 David 가 Alice 의 예금을 못 본 것과 같은 상황입니다. Stakeholder 가
@@ -70,7 +70,7 @@ template RegulatedDeposit
 ```
 
 `regulator` 를 필드로 갖고 `observer` 로 선언합니다. **이 Template 으로 만든 모든
-Contract 는 처음부터 SEC 에게 보입니다.**
+Contract 는 처음부터 Regulator 에게 보입니다.**
 
 나중에 "이 거래는 공시하고 저 거래는 감추자" 를 할 수 없습니다. 감추려면 다른
 Template 을 써야 합니다.
@@ -85,7 +85,7 @@ Daml         Template 이 공시 범위를 확정한다
 
 ### 2. 가시성과 권한은 별개입니다
 
-SEC 는 모든 예금을 봅니다. 그런데 **아무것도 못 합니다.**
+Regulator 는 모든 예금을 봅니다. 그런데 **아무것도 못 합니다.**
 
 | 시도 | 결과 |
 | --- | --- |
@@ -108,18 +108,18 @@ choice Freeze : ContractId RegulatedDeposit
 ```
 
 ```
-signatory  = Citi, Alice
-controller = SEC
+signatory  = Bank, Alice
+controller = Regulator
 ─────────────────────────
-권한        = Citi, Alice, SEC
+권한        = Bank, Alice, Regulator
 
-만들려는 Contract 의 signatory = Citi, Alice        → 충족
+만들려는 Contract 의 signatory = Bank, Alice        → 충족
 ```
 
-**SEC 는 Signatory 가 아닌데도 Choice 를 행사합니다.** Step 03 에서 본 대로
+**Regulator 는 Signatory 가 아닌데도 Choice 를 행사합니다.** Step 03 에서 본 대로
 Controller 는 Signatory 와 별개이기 때문입니다.
 
-그리고 Alice 는 이 Template 을 수락한 시점에 "SEC 가 동결할 수 있다" 에 이미
+그리고 Alice 는 이 Template 을 수락한 시점에 "Regulator 가 동결할 수 있다" 에 이미
 동의했습니다. 약관에 서명하는 것과 같습니다.
 
 ### 4. 동결은 권한이 아니라 상태 검사로 막습니다
@@ -139,7 +139,7 @@ Alice 는 동결 중에도 여전히 Controller 입니다. 막는 것은 **Choic
 
 ### 5. 선택적 공시도 archive + create 입니다
 
-SEC 는 상시 공시지만 외부 감사인은 그렇지 않습니다. `Publish` 로 그때그때 엽니다.
+Regulator 는 상시 공시지만 외부 감사인은 그렇지 않습니다. `Publish` 로 그때그때 엽니다.
 
 ```daml
 choice Publish : ContractId AuditedDeposit
@@ -168,19 +168,19 @@ Observer 를 더하는 것도 archive + create 이고, **Contract ID 가 바뀝�
 
 | 상시 공시 | 검증 |
 | --- | --- |
-| `testRegulatorSees` | SEC 는 발행 즉시 예금을 본다 |
+| `testRegulatorSees` | Regulator 는 발행 즉시 예금을 본다 |
 | `testStrangerSeesNothing` | David 는 아무것도 못 본다 |
-| `testRegulatorSeesTransfer` | 이체 제안과 결과가 모두 SEC 에게 보인다 |
+| `testRegulatorSeesTransfer` | 이체 제안과 결과가 모두 Regulator 에게 보인다 |
 
 | Observer 는 권한이 아니다 | 검증 |
 | --- | --- |
-| `testRegulatorCannotTransfer` | SEC 는 보지만 이체시킬 수 없다 |
-| `testRegulatorCannotArchive` | SEC 는 archive 할 수 없다 |
+| `testRegulatorCannotTransfer` | Regulator 는 보지만 이체시킬 수 없다 |
+| `testRegulatorCannotArchive` | Regulator 는 archive 할 수 없다 |
 | `testStrangerCannotFreeze` | 제3자는 동결할 수 없다 |
 
 | 명시된 권한만 행사 | 검증 |
 | --- | --- |
-| `testRegulatorFreezes` | SEC 는 Freeze Choice 가 있으므로 동결할 수 있다 |
+| `testRegulatorFreezes` | Regulator 는 Freeze Choice 가 있으므로 동결할 수 있다 |
 | `testFrozenCannotTransfer` | 동결된 예금은 이체가 막힌다 |
 | `testUnfreezeRestores` | 해제하면 다시 이체된다 |
 | `testOwnerCannotFreeze` | 예금주는 자기 예금을 동결할 수 없다 |
@@ -193,8 +193,8 @@ Observer 를 더하는 것도 archive + create 이고, **Contract ID 가 바뀝�
 
 ## 이 Step 으로 확인하지 못한 것
 
-`dpm test` 는 인메모리 엔진이라 **SEC 의 Participant 에 실제로 데이터가 도달하는지**는
-보이지 않습니다. [Step 05](Step05MultiParticipant.md) 의 구성에 `sec` participant 를
+`dpm test` 는 인메모리 엔진이라 **Regulator 의 Participant 에 실제로 데이터가 도달하는지**는
+보이지 않습니다. [Step 05](Step05MultiParticipant.md) 의 구성에 `regulator` participant 를
 추가하면 확인할 수 있습니다.
 
 `canton/step05.conf` 에 participant 를 하나 더 선언하고 `step05-bootstrap.canton` 에서

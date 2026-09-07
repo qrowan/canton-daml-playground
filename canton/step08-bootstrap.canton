@@ -1,44 +1,44 @@
 nodes.local.start()
 
-val dtcc = bootstrap.synchronizer(
-  synchronizerName = "dtcc",
-  sequencers = Seq(dtccSequencer),
-  mediators = Seq(dtccMediator),
-  synchronizerOwners = Seq(dtccSequencer),
+val public = bootstrap.synchronizer(
+  synchronizerName = "public",
+  sequencers = Seq(publicSequencer),
+  mediators = Seq(publicMediator),
+  synchronizerOwners = Seq(publicSequencer),
   synchronizerThreshold = PositiveInt.one,
-  staticSynchronizerParameters = StaticSynchronizerParameters.defaults(dtccSequencer.config.crypto, ProtocolVersion.latest),
+  staticSynchronizerParameters = StaticSynchronizerParameters.defaults(publicSequencer.config.crypto, ProtocolVersion.latest),
 )
 
-val euroclear = bootstrap.synchronizer(
-  synchronizerName = "euroclear",
-  sequencers = Seq(euroclearSequencer),
-  mediators = Seq(euroclearMediator),
-  synchronizerOwners = Seq(euroclearSequencer),
+val consortium = bootstrap.synchronizer(
+  synchronizerName = "consortium",
+  sequencers = Seq(consortiumSequencer),
+  mediators = Seq(consortiumMediator),
+  synchronizerOwners = Seq(consortiumSequencer),
   synchronizerThreshold = PositiveInt.one,
-  staticSynchronizerParameters = StaticSynchronizerParameters.defaults(euroclearSequencer.config.crypto, ProtocolVersion.latest),
+  staticSynchronizerParameters = StaticSynchronizerParameters.defaults(consortiumSequencer.config.crypto, ProtocolVersion.latest),
 )
 
-citi.synchronizers.connect_local(dtccSequencer, alias = "dtcc")
-citi.synchronizers.connect_local(euroclearSequencer, alias = "euroclear")
-goldmansachs.synchronizers.connect_local(dtccSequencer, alias = "dtcc")
-goldmansachs.synchronizers.connect_local(euroclearSequencer, alias = "euroclear")
+bank.synchronizers.connect_local(publicSequencer, alias = "public")
+bank.synchronizers.connect_local(consortiumSequencer, alias = "consortium")
+issuer.synchronizers.connect_local(publicSequencer, alias = "public")
+issuer.synchronizers.connect_local(consortiumSequencer, alias = "consortium")
 
 // unassign 과 assign 사이의 구간을 눈으로 볼 수 있게 늘립니다. 기본값은 15초이고,
 // 이 시간이 지나면 Canton 이 자동으로 assign 합니다.
 val exclusivity = com.digitalasset.canton.config.NonNegativeFiniteDuration.ofMinutes(10)
-dtccSequencer.topology.synchronizer_parameters.propose_update(
-  dtcc.logical,
+publicSequencer.topology.synchronizer_parameters.propose_update(
+  public.logical,
   _.update(assignmentExclusivityTimeout = exclusivity),
 )
-euroclearSequencer.topology.synchronizer_parameters.propose_update(
-  euroclear.logical,
+consortiumSequencer.topology.synchronizer_parameters.propose_update(
+  consortium.logical,
   _.update(assignmentExclusivityTimeout = exclusivity),
 )
 
 import com.digitalasset.canton.topology.transaction.SynchronizerTrustCertificate.ParticipantTopologyFeatureFlag
 
-Seq(citi, goldmansachs).foreach { p =>
-  Seq(dtcc.logical, euroclear.logical).foreach { s =>
+Seq(bank, issuer).foreach { p =>
+  Seq(public.logical, consortium.logical).foreach { s =>
     p.topology.synchronizer_trust_certificates.propose(
       participantId = p.id,
       synchronizerId = s,
@@ -49,28 +49,28 @@ Seq(citi, goldmansachs).foreach { p =>
 
 val dar = sys.env.getOrElse("STEP08_DAR", "")
 if (dar.nonEmpty) {
-  Seq(citi, goldmansachs).foreach { p =>
-    Seq(dtcc.logical, euroclear.logical).foreach { s =>
+  Seq(bank, issuer).foreach { p =>
+    Seq(public.logical, consortium.logical).foreach { s =>
       p.dars.upload(dar, synchronizerId = Some(s))
     }
   }
 }
 
-val dtccAlias = SynchronizerAlias.tryCreate("dtcc")
-val euroclearAlias = SynchronizerAlias.tryCreate("euroclear")
+val publicAlias = SynchronizerAlias.tryCreate("public")
+val consortiumAlias = SynchronizerAlias.tryCreate("consortium")
 
-val citiParty = citi.parties.enable("Citi", synchronizer = Some(dtccAlias))
-val aliceParty = citi.parties.enable("Alice", synchronizer = Some(dtccAlias))
-val gsParty = goldmansachs.parties.enable("GoldmanSachs", synchronizer = Some(dtccAlias))
+val bankParty = bank.parties.enable("Bank", synchronizer = Some(publicAlias))
+val aliceParty = bank.parties.enable("Alice", synchronizer = Some(publicAlias))
+val issuerParty = issuer.parties.enable("Issuer", synchronizer = Some(publicAlias))
 
-citi.parties.enable("Citi", synchronizer = Some(euroclearAlias))
-citi.parties.enable("Alice", synchronizer = Some(euroclearAlias))
-goldmansachs.parties.enable("GoldmanSachs", synchronizer = Some(euroclearAlias))
+bank.parties.enable("Bank", synchronizer = Some(consortiumAlias))
+bank.parties.enable("Alice", synchronizer = Some(consortiumAlias))
+issuer.parties.enable("Issuer", synchronizer = Some(consortiumAlias))
 
 println("=== READY ===")
-println("DTCC=" + dtcc.logical.toProtoPrimitive)
-println("EUROCLEAR=" + euroclear.logical.toProtoPrimitive)
+println("PUBLIC=" + public.logical.toProtoPrimitive)
+println("CONSORTIUM=" + consortium.logical.toProtoPrimitive)
 println("EXCLUSIVITY=" + exclusivity.toString)
-println("CITI=" + citiParty.toProtoPrimitive)
+println("BANK=" + bankParty.toProtoPrimitive)
 println("ALICE=" + aliceParty.toProtoPrimitive)
-println("GS=" + gsParty.toProtoPrimitive)
+println("ISSUER=" + issuerParty.toProtoPrimitive)

@@ -7,7 +7,7 @@
 Step 02 는 원장 동작을 관찰하는 단계다. 이 템플릿은 그 관찰에 필요한 최소한만
 갖는다. choice 가 없으므로 한 번 만들면 archive 외에는 할 수 있는 일이 없다.
 
-  bank      발행 은행 (Citi)
+  bank      발행 은행 (Bank)
   owner     예금주 (Alice)
   amount    금액
 

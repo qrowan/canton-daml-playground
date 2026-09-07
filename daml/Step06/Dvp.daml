@@ -41,25 +41,25 @@ Bob 이 보유한 채권을 Alice 에게 팔고, Alice 는 현금을 지급한�
 
   Settle 을 행사하는 시점:
 
-      DvpProposal 의 signatory = GoldmanSachs, Bob
+      DvpProposal 의 signatory = Issuer, Bob
       Settle 의 controller     = Alice
       ─────────────────────────────────────────
-      이 지점의 권한            = GoldmanSachs, Bob, Alice
+      이 지점의 권한            = Issuer, Bob, Alice
 
   채권 다리 — 직접 create:
 
-      만들려는 Bond 의 signatory = GoldmanSachs, Alice   → 충족
+      만들려는 Bond 의 signatory = Issuer, Alice   → 충족
 
   현금 다리 — 중첩 exercise:
 
       exercise cashCid CashTransfer
         controller = Alice, Bob   → 둘 다 현재 권한에 있으므로 행사 가능
         그 안의 권한 = [Cash 의 signatory] + [controller]
-                     = (Citi, Alice) + (Alice, Bob)
-                     = Citi, Alice, Bob
-        만들려는 Cash 의 signatory = Citi, Bob            → 충족
+                     = (Bank, Alice) + (Alice, Bob)
+                     = Bank, Alice, Bob
+        만들려는 Cash 의 signatory = Bank, Bob            → 충족
 
-  **Citi 는 이 Transaction 에 아무 행위도 하지 않았는데 권한이 실렸다.**
+  **Bank 는 이 Transaction 에 아무 행위도 하지 않았는데 권한이 실렸다.**
   Cash Contract 의 signatory 로서 이미 동의해 둔 것이 Choice 를 통해 흘러온 것이다.
   발행자가 결제 시점에 온라인일 필요가 없는 이유다.
 

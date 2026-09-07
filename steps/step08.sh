@@ -34,8 +34,8 @@ TOTAL=12
 WORK="$ROOT/.step08"
 LOG="$WORK/canton.log"
 
-CITI_API=http://localhost:5013
-GS_API=http://localhost:5033
+BANK_API=http://localhost:5013
+ISSUER_API=http://localhost:5033
 
 title() {
   STEP_NO=$((STEP_NO + 1))
@@ -66,15 +66,16 @@ cat <<'BANNER'
  Step 08 — Reassignment
  ────────────────────────────────────────────────────────────
  Step 06 의 DvP 는 현금과 채권이 같은 원장에 있다고 전제했습니다.
- 실무에서는 그렇지 않습니다. 현금은 자금 결제망에, 증권은 예탁결제망에
- 있습니다. 서로 다른 원장입니다.
+ 실무에서는 자산이 서로 다른 원장에 놓이는 일이 흔합니다.
 
- 여기서는 Synchronizer 를 둘 띄웁니다.
+ 여기서는 Synchronizer 를 둘 띄웁니다. 나누는 기준은 자산 종류가 아니라
+ 참여 자격과 거버넌스입니다 — Synchronizer 는 거래 내용을 보지 못하므로
+ 그 안에 무엇이 있는지 알 수가 없습니다.
 
-   dtcc           현금 원장       Sequencer 5001 / Mediator 5003
-   euroclear      증권 원장       Sequencer 5004 / Mediator 5006
-   citi           Citi, Alice     Ledger 5011 / JSON 5013
-   goldmansachs   GoldmanSachs    Ledger 5031 / JSON 5033
+   public       공용 원장 (누구나 참여)    Sequencer 5001 / Mediator 5003
+   consortium   컨소시엄 원장 (승인 회원)   Sequencer 5004 / Mediator 5006
+   bank         Bank, Alice               Ledger 5011 / JSON 5013
+   issuer       Issuer                    Ledger 5031 / JSON 5033
 
  Daml 코드는 Step 06 의 것을 그대로 씁니다. 한 줄도 고치지 않습니다.
 BANNER
@@ -124,9 +125,27 @@ printf '\n'
 say "Sequencer + Mediator 한 벌이 Synchronizer 하나입니다. 두 벌이므로"
 say "${B}독립적인 원장이 두 개${R}입니다."
 printf '\n'
-note "Participant 는 Step 05 와 같이 둘입니다. Morgan Stanley 자리에 GoldmanSachs 가"
-note "들어온 것은 다루는 자산이 채권이기 때문이고, 구조는 같습니다. 이 Step 에서"
-note "실제로 달라지는 변수는 Synchronizer 의 개수 하나뿐입니다."
+say "이름이 public / consortium 인 것에 이유가 있습니다. ${B}원장은 자산 종류로"
+say "나뉘지 않습니다${R} — Synchronizer 는 거래 내용을 보지 못하므로 그 안에 현금이"
+say "있는지 증권이 있는지 알 수가 없습니다."
+printf '\n'
+cat <<'WHY'
+
+    경계를 정하는 것은 운영 쪽 요구입니다
+
+      규제      특정 관할의 Participant 만 처리하도록 제한
+      성능      처리량 높은 흐름을 나눠 경합을 줄임
+      격리      특정 거래 흐름을 공용망과 완전히 분리
+      비용      공용망 수수료가 과도한 경우
+      거버넌스   원하는 운영 모델을 선택
+
+WHY
+say "여기서는 ${B}참여 자격${R}으로 갈랐습니다 — public 은 누구나, consortium 은"
+say "승인 회원만입니다. 현금이 public 에 채권이 consortium 에 놓이는 것은 결과입니다."
+printf '\n'
+note "Participant 는 Step 05 와 같이 둘입니다. Broker 자리에 Issuer 가 들어온 것은"
+note "다루는 자산이 채권이기 때문이고, 구조는 같습니다. 이 Step 에서 실제로"
+note "달라지는 변수는 Synchronizer 의 개수 하나뿐입니다."
 
 # ─── 2 ───────────────────────────────────────────────────────────────────────
 
@@ -192,17 +211,17 @@ if [ "$READY" != 1 ]; then
     pkill -f 'daemon -c canton/'"
 fi
 
-DTCC=$(grep  '^DTCC='      "$LOG" | tail -1 | cut -d= -f2)
-EURO=$(grep  '^EUROCLEAR=' "$LOG" | tail -1 | cut -d= -f2)
-CITI=$(grep  '^CITI='      "$LOG" | tail -1 | cut -d= -f2)
+PUBLIC=$(grep  '^PUBLIC='      "$LOG" | tail -1 | cut -d= -f2)
+CONSORTIUM=$(grep  '^CONSORTIUM=' "$LOG" | tail -1 | cut -d= -f2)
+BANK=$(grep  '^BANK='      "$LOG" | tail -1 | cut -d= -f2)
 ALICE=$(grep '^ALICE='     "$LOG" | tail -1 | cut -d= -f2)
-GS=$(grep    '^GS='        "$LOG" | tail -1 | cut -d= -f2)
+ISSUER=$(grep    '^ISSUER='        "$LOG" | tail -1 | cut -d= -f2)
 EXCL=$(grep  '^EXCLUSIVITY=' "$LOG" | tail -1 | cut -d= -f2)
 
 ok "노드 6개 기동, Synchronizer 2개 구성 완료"
 printf '\n'
-printf '  %-12s %s\n' "dtcc"      "$DTCC"
-printf '  %-12s %s\n' "euroclear" "$EURO"
+printf '  %-12s %s\n' "public"      "$PUBLIC"
+printf '  %-12s %s\n' "consortium" "$CONSORTIUM"
 printf '\n'
 note "Synchronizer ID 도 Party ID 처럼 이름::지문 꼴입니다. 지문은 그 원장을"
 note "만든 키에서 나옵니다."
@@ -319,34 +338,34 @@ CASH="$PKG:Step06.Dvp:Cash"
 BOND="$PKG:Step06.Dvp:Bond"
 PROPT="$PKG:Step06.Dvp:DvpProposal"
 
-mkuser "$CITI_API" citi-settlement "$CITI" "$ALICE"
-mkuser "$CITI_API" alice-web "$ALICE"
-mkuser "$GS_API"   gs-desk     "$GS"
+mkuser "$BANK_API" bank-settlement "$BANK" "$ALICE"
+mkuser "$BANK_API" alice-web "$ALICE"
+mkuser "$ISSUER_API"   issuer-desk     "$ISSUER"
 
 # ─── 4 ───────────────────────────────────────────────────────────────────────
 
 title "발행 — 자산마다 원장이 다르다"
-say "현금은 dtcc 에, 채권은 euroclear 에 발행합니다. 제출할 때 synchronizerId 를"
+say "현금은 public 에, 채권은 consortium 에 발행합니다. 제출할 때 synchronizerId 를"
 say "지정하면 그 원장에서 실행됩니다."
 pause
 
-printf '%s$ Citi + Alice → Cash 1000  (synchronizerId = dtcc)%s\n\n' "$YE" "$R"
-submit "$CITI_API" citi-settlement "[\"$CITI\",\"$ALICE\"]" \
-  "[{\"CreateCommand\":{\"templateId\":\"$CASH\",\"createArguments\":{\"bank\":\"$CITI\",\"owner\":\"$ALICE\",\"amount\":\"1000.0\"}}}]" "$DTCC" \
+printf '%s$ Bank + Alice → Cash 1000  (synchronizerId = public)%s\n\n' "$YE" "$R"
+submit "$BANK_API" bank-settlement "[\"$BANK\",\"$ALICE\"]" \
+  "[{\"CreateCommand\":{\"templateId\":\"$CASH\",\"createArguments\":{\"bank\":\"$BANK\",\"owner\":\"$ALICE\",\"amount\":\"1000.0\"}}}]" "$PUBLIC" \
   | result
 
-printf '\n%s$ GoldmanSachs → Bond 10  (synchronizerId = euroclear)%s\n\n' "$YE" "$R"
-submit "$GS_API" gs-desk "[\"$GS\"]" \
-  "[{\"CreateCommand\":{\"templateId\":\"$BOND\",\"createArguments\":{\"issuer\":\"$GS\",\"owner\":\"$GS\",\"isin\":\"US912810TM09\",\"quantity\":\"10.0\"}}}]" "$EURO" \
+printf '\n%s$ Issuer → Bond 10  (synchronizerId = consortium)%s\n\n' "$YE" "$R"
+submit "$ISSUER_API" issuer-desk "[\"$ISSUER\"]" \
+  "[{\"CreateCommand\":{\"templateId\":\"$BOND\",\"createArguments\":{\"issuer\":\"$ISSUER\",\"owner\":\"$ISSUER\",\"isin\":\"US912810TM09\",\"quantity\":\"10.0\"}}}]" "$CONSORTIUM" \
   | result
 
-CASH_CID=$(wait_cid "$CITI_API" "$ALICE" Cash) || die "현금을 찾지 못했습니다"
-BOND_CID=$(wait_cid "$GS_API"   "$GS"    Bond) || die "채권을 찾지 못했습니다"
+CASH_CID=$(wait_cid "$BANK_API" "$ALICE" Cash) || die "현금을 찾지 못했습니다"
+BOND_CID=$(wait_cid "$ISSUER_API"   "$ISSUER"    Bond) || die "채권을 찾지 못했습니다"
 
 printf '\n'
 ok "발행 완료"
 printf '\n'
-note "채권의 issuer 와 owner 가 둘 다 GoldmanSachs 입니다. signatory 가 한 party 로"
+note "채권의 issuer 와 owner 가 둘 다 Issuer 입니다. signatory 가 한 party 로"
 note "합쳐지므로 혼자서 만들 수 있습니다 — 발행사가 자기 앞으로 찍어 두는 것입니다."
 
 # ─── 5 ───────────────────────────────────────────────────────────────────────
@@ -355,11 +374,11 @@ title "Contract 는 한 Synchronizer 에 배정된다"
 say "ACS 항목에는 그 Contract 가 어느 원장에 있는지가 함께 실려 옵니다."
 pause
 
-printf '%s$ citi-participant / Alice 시점%s\n\n' "$YE" "$R"
-show "$CITI_API" "$ALICE"
+printf '%s$ bank-participant / Alice 시점%s\n\n' "$YE" "$R"
+show "$BANK_API" "$ALICE"
 
-printf '\n%s$ goldmansachs-participant / GoldmanSachs 시점%s\n\n' "$YE" "$R"
-show "$GS_API" "$GS"
+printf '\n%s$ issuer-participant / Issuer 시점%s\n\n' "$YE" "$R"
+show "$ISSUER_API" "$ISSUER"
 
 printf '\n'
 say "${B}Contract 는 어느 한 원장에 속합니다.${R} 두 원장에 동시에 있을 수 없고,"
@@ -371,23 +390,23 @@ note "원장이 다르면 그 둘이 다르므로, 하나의 확인 프로토콜
 # ─── 6 ───────────────────────────────────────────────────────────────────────
 
 title "결제 제안 — 채권 원장에서"
-say "GoldmanSachs 가 Alice 에게 채권 10 을 1000 에 팔겠다고 제안합니다."
-say "채권이 euroclear 에 있으므로 제안도 euroclear 에서 만들어집니다."
+say "Issuer 가 Alice 에게 채권 10 을 1000 에 팔겠다고 제안합니다."
+say "채권이 consortium 에 있으므로 제안도 consortium 에서 만들어집니다."
 pause
 
 printf '%s$ ProposeDvp  (buyer=Alice, price=1000)%s\n\n' "$YE" "$R"
-submit "$GS_API" gs-desk "[\"$GS\"]" \
-  "[{\"ExerciseCommand\":{\"templateId\":\"$BOND\",\"contractId\":\"$BOND_CID\",\"choice\":\"ProposeDvp\",\"choiceArgument\":{\"buyer\":\"$ALICE\",\"price\":\"1000.0\"}}}]" "$EURO" \
+submit "$ISSUER_API" issuer-desk "[\"$ISSUER\"]" \
+  "[{\"ExerciseCommand\":{\"templateId\":\"$BOND\",\"contractId\":\"$BOND_CID\",\"choice\":\"ProposeDvp\",\"choiceArgument\":{\"buyer\":\"$ALICE\",\"price\":\"1000.0\"}}}]" "$CONSORTIUM" \
   | result
 
-PROP_CID=$(wait_cid "$CITI_API" "$ALICE" DvpProposal) || die "제안이 도달하지 않았습니다"
+PROP_CID=$(wait_cid "$BANK_API" "$ALICE" DvpProposal) || die "제안이 도달하지 않았습니다"
 
 printf '\n%s$ Alice 시점%s\n\n' "$YE" "$R"
-show "$CITI_API" "$ALICE"
+show "$BANK_API" "$ALICE"
 
 printf '\n'
-say "Alice 는 두 원장의 Contract 를 하나의 목록으로 봅니다. 하지만 ${B}현금은 dtcc,"
-say "제안은 euroclear${R} 입니다. 결제하려면 둘을 한 원장에 모아야 합니다."
+say "Alice 는 두 원장의 Contract 를 하나의 목록으로 봅니다. 하지만 ${B}현금은 public,"
+say "제안은 consortium${R} 입니다. 결제하려면 둘을 한 원장에 모아야 합니다."
 
 # ─── 7 ───────────────────────────────────────────────────────────────────────
 
@@ -395,11 +414,11 @@ title "Unassign — 현금을 원장에서 떼어낸다"
 say "Reassignment 는 두 단계입니다. 먼저 원본 원장에서 떼어냅니다."
 pause
 
-printf '%s$ POST %s/v2/commands/submit-and-wait-for-reassignment%s\n' "$YE" "$CITI_API" "$R"
-printf '%s    UnassignCommand  source=dtcc  target=euroclear%s\n\n' "$YE" "$R"
+printf '%s$ POST %s/v2/commands/submit-and-wait-for-reassignment%s\n' "$YE" "$BANK_API" "$R"
+printf '%s    UnassignCommand  source=public  target=consortium%s\n\n' "$YE" "$R"
 
-UNRESP=$(reassign "$CITI_API" alice-web "$ALICE" \
-  "{\"command\":{\"UnassignCommand\":{\"value\":{\"contractId\":\"$CASH_CID\",\"source\":\"$DTCC\",\"target\":\"$EURO\"}}}}")
+UNRESP=$(reassign "$BANK_API" alice-web "$ALICE" \
+  "{\"command\":{\"UnassignCommand\":{\"value\":{\"contractId\":\"$CASH_CID\",\"source\":\"$PUBLIC\",\"target\":\"$CONSORTIUM\"}}}}")
 
 RID=$(printf '%s' "$UNRESP" | pick JsUnassignedEvent "print(e['reassignmentId'] if e else '')")
 printf '%s' "$UNRESP" | pick JsUnassignedEvent "
@@ -413,11 +432,11 @@ else:
 [ -n "$RID" ] || die "unassign 에 실패했습니다"
 
 printf '\n%s$ Alice 시점%s\n\n' "$YE" "$R"
-show "$CITI_API" "$ALICE"
+show "$BANK_API" "$ALICE"
 
 printf '\n'
-say "현금의 상태가 ${B}이동중${R} 으로 바뀌었습니다. dtcc 에서 떨어져 나왔지만"
-say "아직 euroclear 에 붙지 않았습니다."
+say "현금의 상태가 ${B}이동중${R} 으로 바뀌었습니다. public 에서 떨어져 나왔지만"
+say "아직 consortium 에 붙지 않았습니다."
 printf '\n'
 say "${B}이 구간에는 기한이 있습니다.${R} assignmentExclusivity 까지는 제출자만"
 say "붙일 수 있고, 그 시각이 지나면 ${B}Participant 가 알아서 붙입니다${R} —"
@@ -436,8 +455,8 @@ say "지금 결제를 시도하면 어떻게 되는지 봅니다."
 pause
 
 printf '%s$ Settle 시도  (cashCid = 이동중인 현금)%s\n\n' "$YE" "$R"
-TRY=$(submit "$CITI_API" alice-web "[\"$ALICE\"]" \
-  "[{\"ExerciseCommand\":{\"templateId\":\"$PROPT\",\"contractId\":\"$PROP_CID\",\"choice\":\"Settle\",\"choiceArgument\":{\"cashCid\":\"$CASH_CID\"}}}]" "$EURO")
+TRY=$(submit "$BANK_API" alice-web "[\"$ALICE\"]" \
+  "[{\"ExerciseCommand\":{\"templateId\":\"$PROPT\",\"contractId\":\"$PROP_CID\",\"choice\":\"Settle\",\"choiceArgument\":{\"cashCid\":\"$CASH_CID\"}}}]" "$CONSORTIUM")
 printf '%s' "$TRY" | result
 TRY_CODE=$(printf '%s' "$TRY" | jq_ 'print(d.get("code",""))')
 
@@ -454,7 +473,7 @@ if [ -n "$TRY_CODE" ]; then
 else
   warn "예상과 달리 성공했습니다."
   printf '\n'
-  say "assignmentExclusivity 가 이미 지나서 Canton 이 현금을 euroclear 에 붙인"
+  say "assignmentExclusivity 가 이미 지나서 Canton 이 현금을 consortium 에 붙인"
   say "뒤였습니다. 결제가 그대로 진행되었습니다."
   printf '\n'
   note "보여주려던 것은 '이동중에는 쓸 수 없다' 였습니다. 7단계 직후에 바로 이"
@@ -468,8 +487,8 @@ title "Assign — 반대편 원장에 붙인다"
 pause
 
 printf '%s$ AssignCommand  reassignmentId=%s...%s\n\n' "$YE" "${RID:0:20}" "$R"
-reassign "$CITI_API" alice-web "$ALICE" \
-  "{\"command\":{\"AssignCommand\":{\"value\":{\"reassignmentId\":\"$RID\",\"source\":\"$DTCC\",\"target\":\"$EURO\"}}}}" \
+reassign "$BANK_API" alice-web "$ALICE" \
+  "{\"command\":{\"AssignCommand\":{\"value\":{\"reassignmentId\":\"$RID\",\"source\":\"$PUBLIC\",\"target\":\"$CONSORTIUM\"}}}}" \
   | pick JsAssignmentEvent "
 if e:
     print('  target              ', e['target'].split('::')[0])
@@ -480,14 +499,14 @@ else:
 "
 
 printf '\n%s$ Alice 시점%s\n\n' "$YE" "$R"
-show "$CITI_API" "$ALICE"
+show "$BANK_API" "$ALICE"
 
 printf '\n'
 say "원래 Contract ID: ${DIM}${CASH_CID:0:16}${R}"
 printf '\n'
-CASH_STATE=$(cid_state "$CITI_API" "$ALICE" "$CASH_CID")
+CASH_STATE=$(cid_state "$BANK_API" "$ALICE" "$CASH_CID")
 case "$CASH_STATE" in
-  JsActiveContract/euroclear) ok "같은 Contract ID 가 euroclear 에서 활성입니다" ;;
+  JsActiveContract/consortium) ok "같은 Contract ID 가 consortium 에서 활성입니다" ;;
   "")                         warn "그 Contract 가 Alice 의 목록에 없습니다 (이미 소비되었습니다: $CASH_STATE)" ;;
   *)                          warn "예상과 다릅니다: $CASH_STATE" ;;
 esac
@@ -502,24 +521,24 @@ note "Contract 가 유지됩니다. 바뀌는 것은 어느 원장이 이 Contra
 # ─── 10 ──────────────────────────────────────────────────────────────────────
 
 title "결제"
-say "두 자산이 euroclear 에 모였습니다. 이제 Step 06 의 Settle 이 그대로 됩니다."
+say "두 자산이 consortium 에 모였습니다. 이제 Step 06 의 Settle 이 그대로 됩니다."
 pause
 
-printf '%s$ Settle  (synchronizerId = euroclear)%s\n\n' "$YE" "$R"
-SET1=$(submit "$CITI_API" alice-web "[\"$ALICE\"]" \
-  "[{\"ExerciseCommand\":{\"templateId\":\"$PROPT\",\"contractId\":\"$PROP_CID\",\"choice\":\"Settle\",\"choiceArgument\":{\"cashCid\":\"$CASH_CID\"}}}]" "$EURO")
+printf '%s$ Settle  (synchronizerId = consortium)%s\n\n' "$YE" "$R"
+SET1=$(submit "$BANK_API" alice-web "[\"$ALICE\"]" \
+  "[{\"ExerciseCommand\":{\"templateId\":\"$PROPT\",\"contractId\":\"$PROP_CID\",\"choice\":\"Settle\",\"choiceArgument\":{\"cashCid\":\"$CASH_CID\"}}}]" "$CONSORTIUM")
 printf '%s' "$SET1" | result
 SET1_CODE=$(printf '%s' "$SET1" | jq_ 'print(d.get("code",""))')
 
-wait_cid "$CITI_API" "$ALICE" Bond >/dev/null || true
+wait_cid "$BANK_API" "$ALICE" Bond >/dev/null || true
 printf '\n%s Alice%s\n' "$B" "$R"
-show "$CITI_API" "$ALICE"
-printf '\n%s GoldmanSachs%s\n' "$B" "$R"
-show "$GS_API" "$GS"
+show "$BANK_API" "$ALICE"
+printf '\n%s Issuer%s\n' "$B" "$R"
+show "$ISSUER_API" "$ISSUER"
 
 printf '\n'
 if [ -z "$SET1_CODE" ]; then
-  ok "채권은 Alice 에게, 현금은 GoldmanSachs 에게 — 한 Transaction 에서"
+  ok "채권은 Alice 에게, 현금은 Issuer 에게 — 한 Transaction 에서"
 else
   warn "결제가 거부되었습니다 ($SET1_CODE). 8단계에서 이미 결제가 끝났다면 정상입니다"
 fi
@@ -537,40 +556,40 @@ say "Alice 를 호스팅하는 Participant 가 앞의 둘을 대신 해 줍니�
 say "아무것도 옮기지 않고 ${B}Settle 한 번만${R} 불러 봅니다."
 pause
 
-printf '%s$ Cash 500 on dtcc / Bond 5 on euroclear / ProposeDvp 500%s\n\n' "$YE" "$R"
-submit "$CITI_API" citi-settlement "[\"$CITI\",\"$ALICE\"]" \
-  "[{\"CreateCommand\":{\"templateId\":\"$CASH\",\"createArguments\":{\"bank\":\"$CITI\",\"owner\":\"$ALICE\",\"amount\":\"500.0\"}}}]" "$DTCC" >/dev/null
-submit "$GS_API" gs-desk "[\"$GS\"]" \
-  "[{\"CreateCommand\":{\"templateId\":\"$BOND\",\"createArguments\":{\"issuer\":\"$GS\",\"owner\":\"$GS\",\"isin\":\"US912810TN81\",\"quantity\":\"5.0\"}}}]" "$EURO" >/dev/null
+printf '%s$ Cash 500 on public / Bond 5 on consortium / ProposeDvp 500%s\n\n' "$YE" "$R"
+submit "$BANK_API" bank-settlement "[\"$BANK\",\"$ALICE\"]" \
+  "[{\"CreateCommand\":{\"templateId\":\"$CASH\",\"createArguments\":{\"bank\":\"$BANK\",\"owner\":\"$ALICE\",\"amount\":\"500.0\"}}}]" "$PUBLIC" >/dev/null
+submit "$ISSUER_API" issuer-desk "[\"$ISSUER\"]" \
+  "[{\"CreateCommand\":{\"templateId\":\"$BOND\",\"createArguments\":{\"issuer\":\"$ISSUER\",\"owner\":\"$ISSUER\",\"isin\":\"US912810TN81\",\"quantity\":\"5.0\"}}}]" "$CONSORTIUM" >/dev/null
 
-CASH2=$(wait_cid "$CITI_API" "$ALICE" Cash) || die "두 번째 현금을 찾지 못했습니다"
-BOND2=$(wait_cid "$GS_API"   "$GS"    Bond) || die "두 번째 채권을 찾지 못했습니다"
+CASH2=$(wait_cid "$BANK_API" "$ALICE" Cash) || die "두 번째 현금을 찾지 못했습니다"
+BOND2=$(wait_cid "$ISSUER_API"   "$ISSUER"    Bond) || die "두 번째 채권을 찾지 못했습니다"
 
-submit "$GS_API" gs-desk "[\"$GS\"]" \
-  "[{\"ExerciseCommand\":{\"templateId\":\"$BOND\",\"contractId\":\"$BOND2\",\"choice\":\"ProposeDvp\",\"choiceArgument\":{\"buyer\":\"$ALICE\",\"price\":\"500.0\"}}}]" "$EURO" >/dev/null
-PROP2=$(wait_cid "$CITI_API" "$ALICE" DvpProposal) || die "두 번째 제안이 도달하지 않았습니다"
+submit "$ISSUER_API" issuer-desk "[\"$ISSUER\"]" \
+  "[{\"ExerciseCommand\":{\"templateId\":\"$BOND\",\"contractId\":\"$BOND2\",\"choice\":\"ProposeDvp\",\"choiceArgument\":{\"buyer\":\"$ALICE\",\"price\":\"500.0\"}}}]" "$CONSORTIUM" >/dev/null
+PROP2=$(wait_cid "$BANK_API" "$ALICE" DvpProposal) || die "두 번째 제안이 도달하지 않았습니다"
 
-printf '  현금  dtcc       %s\n' "${CASH2:0:16}"
-printf '  제안  euroclear  %s\n' "${PROP2:0:16}"
+printf '  현금  public       %s\n' "${CASH2:0:16}"
+printf '  제안  consortium  %s\n' "${PROP2:0:16}"
 
 printf '\n%s$ Settle — unassign/assign 없이 그대로%s\n\n' "$YE" "$R"
-SET2=$(submit "$CITI_API" alice-web "[\"$ALICE\"]" \
-  "[{\"ExerciseCommand\":{\"templateId\":\"$PROPT\",\"contractId\":\"$PROP2\",\"choice\":\"Settle\",\"choiceArgument\":{\"cashCid\":\"$CASH2\"}}}]" "$EURO")
+SET2=$(submit "$BANK_API" alice-web "[\"$ALICE\"]" \
+  "[{\"ExerciseCommand\":{\"templateId\":\"$PROPT\",\"contractId\":\"$PROP2\",\"choice\":\"Settle\",\"choiceArgument\":{\"cashCid\":\"$CASH2\"}}}]" "$CONSORTIUM")
 printf '%s' "$SET2" | result
 SET2_CODE=$(printf '%s' "$SET2" | jq_ 'print(d.get("code",""))')
 
 sleep 2
-printf '\n%s GoldmanSachs%s\n' "$B" "$R"
-show "$GS_API" "$GS"
+printf '\n%s Issuer%s\n' "$B" "$R"
+show "$ISSUER_API" "$ISSUER"
 
 printf '\n'
 if [ -z "$SET2_CODE" ]; then
-  ok "성공했습니다. Participant 가 현금을 euroclear 로 옮긴 뒤 결제했습니다"
+  ok "성공했습니다. Participant 가 현금을 consortium 로 옮긴 뒤 결제했습니다"
 else
   warn "거부되었습니다: $SET2_CODE"
 fi
 printf '\n'
-note "목록에 Bond 가 둘 보이는 것은 GoldmanSachs 가 발행사이기 때문입니다."
+note "목록에 Bond 가 둘 보이는 것은 Issuer 가 발행사이기 때문입니다."
 note "issuer 는 signatory 이므로 Alice 에게 넘어간 채권도 계속 보입니다 — Step 07 의"
 note "가시성 이야기가 그대로 적용됩니다."
 printf '\n'
@@ -643,14 +662,14 @@ SUMMARY
 
 if [ "$KEEP" = 1 ]; then
   say "노드가 계속 실행 중입니다."
-  note "  export DTCC='$DTCC'"
-  note "  export EURO='$EURO'"
-  note "  export CITI='$CITI'"
+  note "  export PUBLIC='$PUBLIC'"
+  note "  export CONSORTIUM='$CONSORTIUM'"
+  note "  export BANK='$BANK'"
   note "  export ALICE='$ALICE'"
-  note "  export GS='$GS'"
+  note "  export ISSUER='$ISSUER'"
   note "  export PKG=$PKG"
-  note "  citi JSON API          $CITI_API"
-  note "  goldmansachs JSON API  $GS_API"
+  note "  bank JSON API          $BANK_API"
+  note "  issuer JSON API  $ISSUER_API"
 else
   say "노드를 종료합니다. 인메모리이므로 Party·User·Contract 가 모두 사라집니다."
   note "계속 살려두려면: ./steps/step08.sh --keep"

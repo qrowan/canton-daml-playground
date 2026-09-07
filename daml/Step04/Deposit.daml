@@ -21,10 +21,10 @@ Step 03 의 Deposit 에서 Transfer 를 ProposeTransfer 로 교체하고, 발행
 
   그리고 발행도 문제였다. 테스트에서는 이렇게 넘어갔다.
 
-      submit [Citi, Alice] do createCmd Deposit ...
+      submit [Bank, Alice] do createCmd Deposit ...
 
   두 party 의 권한을 동시에 쓰는 것인데, **participant 는 자기가 호스팅하는
-  party 의 권한만 행사할 수 있다.** Citi 와 Alice 가 같은 노드에 있으면 되지만,
+  party 의 권한만 행사할 수 있다.** Bank 와 Alice 가 같은 노드에 있으면 되지만,
   Bob 처럼 다른 은행 고객이면 어느 participant 도 두 권한을 동시에 갖지 못한다.
 
 

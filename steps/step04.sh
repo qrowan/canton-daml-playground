@@ -77,7 +77,7 @@ cat <<'BANNER'
  Step 04 — 두 당사자
  ────────────────────────────────────────────────────────────
  Step 03 에서 Transfer 가 실패했습니다. 그리고 발행도 사실은
- submit [Citi, Alice] 라는 편법에 기대고 있었다.
+ submit [Bank, Alice] 라는 편법에 기대고 있었다.
 
  두 문제의 원인은 같다 — 한 트랜잭션에 두 party 의 권한이 필요한데
  participant 는 자기가 호스팅하는 party 의 권한만 행사할 수 있습니다.
@@ -106,12 +106,12 @@ show "$PREV" "choice Transfer" 7
 
 printf '\n'
 cat <<'CALC'
-      signatory  = Citi, Alice
+      signatory  = Bank, Alice
       controller = Alice
       ─────────────────────────
-      권한        = Citi, Alice
+      권한        = Bank, Alice
 
-      만들려는 계약의 signatory = Citi, Bob
+      만들려는 계약의 signatory = Bank, Bob
                                         ↑ Bob 의 권한이 없습니다
 
 CALC
@@ -125,19 +125,19 @@ say "Step 03 의 테스트는 이렇게 발행했습니다."
 pause
 
 cat <<'OLD'
-    submit [Citi, Alice] do
-      createCmd Deposit with bank = citi, owner = alice, amount = 100.0
+    submit [Bank, Alice] do
+      createCmd Deposit with bank = bank, owner = alice, amount = 100.0
 
 OLD
 warn "두 party 의 권한을 동시에 쓰는 것입니다."
 say "participant 는 ${B}자기가 호스팅하는 party 의 권한만${R} 행사할 수 있습니다."
 printf '\n'
 cat <<'HOSTING'
-    같은 노드           citi-participant { Citi, Alice }
-                        → actAs [Citi, Alice] 가능
+    같은 노드           bank-participant { Bank, Alice }
+                        → actAs [Bank, Alice] 가능
 
-    다른 노드           citi-participant { Citi }
-                        morganstanley-participant { Bob }
+    다른 노드           bank-participant { Bank }
+                        broker-participant { Bob }
                         → 어느 쪽도 두 권한을 동시에 갖지 못함
 
 HOSTING
@@ -176,16 +176,16 @@ show "$SRC" "^template DepositProposal" 20
 
 printf '\n'
 cat <<'CALC2'
-    TX 1   Citi 가 혼자 제안을 만듭니다
-             signatory = Citi 뿐 → Citi 권한만으로 생성 가능
+    TX 1   Bank 가 혼자 제안을 만듭니다
+             signatory = Bank 뿐 → Bank 권한만으로 생성 가능
 
     TX 2   Alice 가 AcceptDeposit 을 행사합니다
-             권한 = [Citi] + [Alice] = Citi, Alice
-             만들려는 Deposit 의 signatory = Citi, Alice   → 충족
+             권한 = [Bank] + [Alice] = Bank, Alice
+             만들려는 Deposit 의 signatory = Bank, Alice   → 충족
 
 CALC2
 say "${B}observer 가 여기서 처음 필요해진다.${R}"
-say "제안의 signatory 는 Citi 뿐입니다. Alice 는 서명하지 않았으므로 signatory 가"
+say "제안의 signatory 는 Bank 뿐입니다. Alice 는 서명하지 않았으므로 signatory 가"
 say "아닙니다. 그런데 제안을 ${B}볼 수 없으면 수락할 수도 없습니다.${R}"
 printf '\n'
 note "observer 는 가시성만 줍니다. 수락 권한은 choice 의 controller 가 줍니다."
@@ -203,13 +203,13 @@ show "$SRC" "^template TransferProposal" 9
 printf '\n'
 cat <<'CALC3'
     TX 1   Alice 가 ProposeTransfer 를 행사
-             권한 = [Citi, Alice] + [Alice] = Citi, Alice
-             만들려는 TransferProposal 의 signatory = Citi, Alice   → 충족
+             권한 = [Bank, Alice] + [Alice] = Bank, Alice
+             만들려는 TransferProposal 의 signatory = Bank, Alice   → 충족
              ← 원본 Deposit 은 여기서 소비됩니다
 
     TX 2   Bob 이 AcceptTransfer 를 행사
-             권한 = [Citi, Alice] + [Bob] = Citi, Alice, Bob
-             만들려는 Deposit 의 signatory = Citi, Bob            → 충족
+             권한 = [Bank, Alice] + [Bob] = Bank, Alice, Bob
+             만들려는 Deposit 의 signatory = Bank, Bob            → 충족
 
 CALC3
 say "TX 2 에서 Alice 의 권한이 어디서 왔는지 주목할 것 —"

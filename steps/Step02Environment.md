@@ -26,7 +26,7 @@ Sandbox 기동과 종료도 스크립트가 처리합니다.
 | `--auto` | 엔터 없이 전부 실행 |
 | `--keep` | 끝나고 sandbox 를 끄지 않습니다. 직접 더 만져보고 싶을 때 |
 
-`--keep` 으로 끝내면 `API` / `CITI` / `ALICE` / `DAVID` / `PKG` 값을 출력해 주므로,
+`--keep` 으로 끝내면 `API` / `BANK` / `ALICE` / `DAVID` / `PKG` 값을 출력해 주므로,
 같은 터미널에서 `curl` 을 이어서 던져볼 수 있습니다.
 
 사전에 [README](../README.md) 의 세팅(`env.sh` 생성)이 끝나 있어야 합니다.
@@ -35,9 +35,9 @@ Sandbox 기동과 종료도 스크립트가 처리합니다.
 
 | 이름 | 역할 |
 | --- | --- |
-| **Citi** | 토큰화 예금을 발행하는 은행 (party) |
-| **Alice** | Citi 의 고객 (party) |
-| **David** | Citi 의 또 다른 고객 (party) |
+| **Bank** | 토큰화 예금을 발행하는 은행 (party) |
+| **Alice** | Bank 의 고객 (party) |
+| **David** | Bank 의 또 다른 고객 (party) |
 
 셋 다 같은 participant 가 발급한 **hosted party** 다. 자기 키를 갖고 있지 않다.
 
@@ -73,10 +73,10 @@ template Deposit
 | 3 | Sandbox 기동 | Participant + Sequencer + Mediator 가 한 JVM 에. **synchronizer 연결까지 기다려야 합니다** |
 | 4 | 빈 원장 확인 | `sandbox::` admin party 와 `participant_admin` user 만 존재 |
 | 5 | Party 생성 | 세 party 의 namespace 지문이 모두 같다 → 같은 노드가 발급 |
-| 6 | User 생성 | `citi-settlement` 하나가 Citi + Alice 를 대리 → party ↔ user 는 N:M |
+| 6 | User 생성 | `bank-settlement` 하나가 Bank + Alice 를 대리 → party ↔ user 는 N:M |
 | 7 | package-id | 내용 해시. 원장에 vetting 된 것과 대조 |
-| 8 | 권한 부족 | Citi 권한만으로는 예금 생성 실패 |
-| 9 | 양쪽 권한 | `actAs` 에 Citi + Alice → 성공 |
+| 8 | 권한 부족 | Bank 권한만으로는 예금 생성 실패 |
+| 9 | 양쪽 권한 | `actAs` 에 Bank + Alice → 성공 |
 | 10 | 조회 | Alice 는 계약을 보고, David 는 빈 배열 |
 | 11 | 위조 시도 | David 가 Alice 명의로 만들려 하면 거부 |
 | 12 | 정리 | 확인한 것 요약 |
@@ -100,7 +100,7 @@ Cannot allocate a party without being connected to a synchronizer
 5단계 출력에서 세 party 의 `::` 뒷부분이 모두 같습니다.
 
 ```
-Citi::12204ca735307c57cae751278f174ec2610f3147dc5fd8acb5a4b1a1f335564adc05
+Bank::12204ca735307c57cae751278f174ec2610f3147dc5fd8acb5a4b1a1f335564adc05
 Alice::12204ca735307c57cae751278f174ec2610f3147dc5fd8acb5a4b1a1f335564adc05
 David::12204ca735307c57cae751278f174ec2610f3147dc5fd8acb5a4b1a1f335564adc05
 sandbox::12204ca735307c57cae751278f174ec2610f3147dc5fd8acb5a4b1a1f335564adc05
@@ -118,7 +118,7 @@ Party 는 원장의 주체이고, 그 party 로 API 를 호출하려면 **user**
 INVALID_TOKEN: The submitted request is missing a user-id
 ```
 
-6단계에서 `citi-settlement` 에 Citi 와 Alice 두 party 의 `CanActAs` 를 줍니다.
+6단계에서 `bank-settlement` 에 Bank 와 Alice 두 party 의 `CanActAs` 를 줍니다.
 은행 백오피스가 자기 명의와 고객 명의를 모두 대리하는 실제 구성입니다.
 
 ### 4. 권한은 필드가 아니라 signatory 선언에서 나옵니다
@@ -162,7 +162,7 @@ namespace 지문부터 새로 생성되므로, 이전 실행의 party ID 는 무
 
 ```sh
 export API=http://localhost:7575
-export CITI='Citi::1220...'   # 출력값 복사
+export BANK='Bank::1220...'   # 출력값 복사
 export ALICE='Alice::1220...'
 export DAVID='David::1220...'
 export PKG=...
@@ -171,13 +171,13 @@ export PKG=...
 예금을 하나 더 만들어 봅니다.
 
 ```sh
-curl -s -X POST $API/v2/commands/submit-and-wait -H 'Content-Type: application/json' -d "{\"commands\":[{\"CreateCommand\":{\"templateId\":\"$PKG:Step02.Deposit:Deposit\",\"createArguments\":{\"bank\":\"$CITI\",\"owner\":\"$ALICE\",\"amount\":\"250.0\"}}}],\"commandId\":\"manual-1\",\"userId\":\"citi-settlement\",\"actAs\":[\"$CITI\",\"$ALICE\"],\"readAs\":[]}" | python3 -m json.tool
+curl -s -X POST $API/v2/commands/submit-and-wait -H 'Content-Type: application/json' -d "{\"commands\":[{\"CreateCommand\":{\"templateId\":\"$PKG:Step02.Deposit:Deposit\",\"createArguments\":{\"bank\":\"$BANK\",\"owner\":\"$ALICE\",\"amount\":\"250.0\"}}}],\"commandId\":\"manual-1\",\"userId\":\"bank-settlement\",\"actAs\":[\"$BANK\",\"$ALICE\"],\"readAs\":[]}" | python3 -m json.tool
 ```
 
 `ensure amount > 0.0` 를 위반해 봅니다.
 
 ```sh
-curl -s -X POST $API/v2/commands/submit-and-wait -H 'Content-Type: application/json' -d "{\"commands\":[{\"CreateCommand\":{\"templateId\":\"$PKG:Step02.Deposit:Deposit\",\"createArguments\":{\"bank\":\"$CITI\",\"owner\":\"$ALICE\",\"amount\":\"0.0\"}}}],\"commandId\":\"manual-2\",\"userId\":\"citi-settlement\",\"actAs\":[\"$CITI\",\"$ALICE\"],\"readAs\":[]}" | python3 -m json.tool
+curl -s -X POST $API/v2/commands/submit-and-wait -H 'Content-Type: application/json' -d "{\"commands\":[{\"CreateCommand\":{\"templateId\":\"$PKG:Step02.Deposit:Deposit\",\"createArguments\":{\"bank\":\"$BANK\",\"owner\":\"$ALICE\",\"amount\":\"0.0\"}}}],\"commandId\":\"manual-2\",\"userId\":\"bank-settlement\",\"actAs\":[\"$BANK\",\"$ALICE\"],\"readAs\":[]}" | python3 -m json.tool
 ```
 
 끝나면 `pkill -f canton`.
@@ -190,7 +190,7 @@ Participant 가 **1개뿐**이라 Canton 고유의 것 대부분이 재현되지
 | --- | --- |
 | 참가자 간 신뢰 경계 | 확인자가 항상 자기 자신 |
 | 진짜 데이터 격리 | 한 노드가 양쪽 데이터를 보유 (API 가 뷰만 분리) |
-| 다중 서명의 실무 제약 | 한 노드가 두 party 를 호스팅하므로 `actAs:[Citi,Alice]` 가 그냥 통함 |
+| 다중 서명의 실무 제약 | 한 노드가 두 party 를 호스팅하므로 `actAs:[Bank,Alice]` 가 그냥 통함 |
 | 토폴로지 교환 / vetting 협상 | 노드 간 오갈 상대가 없음 |
 | 다중 호스팅 / threshold | 노드가 하나 |
 | Reassignment | Synchronizer 가 하나 |
