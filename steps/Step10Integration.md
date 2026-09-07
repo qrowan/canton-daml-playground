@@ -183,6 +183,41 @@ ID 가 새로 생겼습니다.
 업무 키가 필요하면 **Template 필드로 직접 넣어야 합니다** — 계좌번호, 주문번호 같은
 것을 계약 내용에 담아 두고 그것으로 찾습니다.
 
+### 9. 브라우저는 원장에 직접 붙지 못합니다
+
+지금까지 러너는 `curl` 로 JSON API 에 붙었습니다. 여기에 화면을 붙이면 브라우저의
+자바스크립트가 같은 자리에 서게 됩니다. 그런데 서지 못합니다.
+
+```sh
+curl -X OPTIONS $API/v2/state/ledger-end \
+  -H "Origin: http://localhost:5173" \
+  -H "Access-Control-Request-Method: GET"
+```
+
+```
+  preflight (OPTIONS)     405
+  Access-Control-* 헤더    없음
+```
+
+브라우저는 다른 출처로 요청하기 전에 preflight 를 보내는데 JSON Ledger API 가 405 로
+답하고, 일반 응답에도 `Access-Control-*` 헤더가 없습니다. **CORS 설정 항목 자체가
+없습니다** — `JsonApiConfig` 에 있는 것은 `enabled`·`websocketConfig`·`address`·
+`internalPort` 같은 것들뿐입니다.
+
+```
+브라우저  ──╳──▶  JSON Ledger API      직접 붙지 못합니다
+브라우저  ────▶  자기 서버  ────▶  JSON Ledger API
+```
+
+**화면이 있는 애플리케이션에는 서버가 반드시 있습니다.** 취향의 문제가 아니라 원장에
+붙을 수 있는 것이 서버뿐이기 때문입니다. 공식 문서가 프론트엔드를 원장에 직접
+붙이지 않는 구성을 기본으로 두는 것도 같은 이유입니다.
+
+앞에서 정리한 것과 이어집니다 — 애플리케이션은 **Party 를 가진 쪽이 자기 자리에서
+운영합니다.** 원장에 붙는 자격이 노드에 있고, 그 노드에 붙을 수 있는 것이 서버뿐이므로
+그렇게 됩니다.
+
+
 ## 흔히 막히는 곳
 
 | 증상 | 원인 |
@@ -200,9 +235,38 @@ ID 가 새로 생겼습니다.
 | 스트리밍 구독 | offset 을 하나씩 조회했습니다. 실제 애플리케이션은 gRPC 스트림이나 JSON API 의 WebSocket 으로 밀어 받습니다 — **받은 뒤 적용하는 규칙은 같습니다** |
 | 여러 Party 를 한 애플리케이션이 따라가는 경우 | Alice 하나만 따라갔습니다 |
 | ACS 가 큰 경우의 분할 조회 | 다섯 건이었습니다 |
+| 화면이 붙은 완전한 애플리케이션 | 러너는 복제본까지만 만들었습니다 — 아래 참조 |
+
+## 화면까지 붙이려면
+
+여기까지가 원장 위에 애플리케이션을 올리는 데 필요한 최소한입니다. 화면이 붙은 완전한
+구성은 공식 레퍼런스 애플리케이션이 그대로 보여줍니다.
+
+**[cn-quickstart](https://github.com/digital-asset/cn-quickstart)** — 소프트웨어 라이선스
+업무를 다루는 풀스택 예제입니다. 공식 문서 기준으로 이렇게 구성되어 있습니다.
+
+| | |
+| --- | --- |
+| 프론트엔드 | React + TypeScript + Vite |
+| 백엔드 | Spring Boot (Java). TypeScript 도 지원됩니다 |
+| 둘 사이의 계약 | 공유 `openapi.yaml` 에서 타입을 생성해 컴파일 시점에 맞춥니다 |
+| 읽기 | PQS — 원장을 PostgreSQL 로 투영해 SQL 로 조회합니다 |
+| 인증 | OAuth2 / OIDC. 로컬에서는 Keycloak |
+| 실행 | Docker Compose 로 LocalNet |
+
+이 Step 에서 확인한 것이 그 안에 그대로 들어 있습니다 — 브라우저가 `commandId` 를
+만들어 보내고, 화면은 5초마다 다시 조회해 갱신하고, 원장 접근은 전부 백엔드를
+거칩니다.
+
+| 문서 | |
+| --- | --- |
+| 애플리케이션 구조 | https://docs.canton.network/appdev/modules/m4-app-architecture |
+| 백엔드 | https://docs.canton.network/appdev/modules/m4-backend-dev |
+| 프론트엔드 | https://docs.canton.network/appdev/modules/m4-frontend-dev |
+
+위 표는 **공식 문서 기준**입니다. 이 저장소에서 실행해 확인한 것이 아닙니다.
 
 ---
 
-여기까지가 원장 위에 애플리케이션을 올리는 데 필요한 최소한입니다. 다음으로 다룰 만한
-것은 **Daml Finance** 입니다 — 지금까지 직접 만든 Cash·Bond·Deposit 에 해당하는 것을
-표준 라이브러리가 어떻게 제공하는지, 그리고 그것을 쓰면 무엇이 달라지는지입니다.
+다음: **[Step 11 — External Party](Step11ExternalParty.md).** 지금까지 모든 거래는
+Participant 가 대신 서명했습니다. 자기 키를 쥔 Party 는 무엇이 달라지는지 다룹니다.

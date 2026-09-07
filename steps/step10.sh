@@ -30,7 +30,7 @@ else
 fi
 
 STEP_NO=0
-TOTAL=11
+TOTAL=12
 WORK="$ROOT/.step10"
 LOG="$WORK/canton.log"
 SYNC="$WORK/ledger_sync.py"
@@ -515,6 +515,58 @@ note "여기서 실제 문제로 드러납니다."
 
 # ─── 11 ──────────────────────────────────────────────────────────────────────
 
+title "브라우저에서 직접 붙을 수 있는가"
+pause
+
+say "지금까지 러너는 ${B}curl${R} 로 JSON API 에 붙었습니다. 여기에 화면을 붙이면"
+say "브라우저의 자바스크립트가 같은 자리에 서게 됩니다."
+printf '\n'
+say "브라우저는 다른 출처(origin)로 요청하기 전에 ${B}preflight${R} 를 먼저 보냅니다."
+printf '\n'
+
+printf '%s$ curl -X OPTIONS %s/v2/state/ledger-end \\%s\n' "$YE" "$API" "$R"
+printf '%s    -H "Origin: http://localhost:5173" \\%s\n' "$YE" "$R"
+printf '%s    -H "Access-Control-Request-Method: GET"%s\n\n' "$YE" "$R"
+
+PREFLIGHT=$(curl -s -o /dev/null -w '%{http_code}' -X OPTIONS "$API/v2/state/ledger-end" \
+  -H 'Origin: http://localhost:5173' \
+  -H 'Access-Control-Request-Method: GET' 2>/dev/null)
+
+CORS_HDRS=$(curl -s -D- -o /dev/null "$API/v2/state/ledger-end" \
+  -H 'Origin: http://localhost:5173' 2>/dev/null | grep -ci '^access-control-' || true)
+
+printf '  preflight (OPTIONS)     %s\n' "$PREFLIGHT"
+if [ "${CORS_HDRS:-0}" -eq 0 ]; then
+  printf '  Access-Control-* 헤더    없음\n'
+else
+  printf '  Access-Control-* 헤더    %s 개\n' "$CORS_HDRS"
+fi
+printf '\n'
+
+if [ "$PREFLIGHT" = "405" ] && [ "${CORS_HDRS:-0}" -eq 0 ]; then
+  ok "브라우저에서 직접 붙지 못합니다"
+else
+  warn "예상과 다릅니다 — preflight=$PREFLIGHT, CORS 헤더=$CORS_HDRS"
+fi
+
+printf '\n'
+say "preflight 가 405 이고 응답에 ${B}Access-Control-*${R} 헤더가 없습니다."
+say "JSON Ledger API 에는 ${B}CORS 설정 항목 자체가 없습니다.${R}"
+printf '\n'
+cat <<'CORS'
+
+    브라우저  ──╳──▶  JSON Ledger API      직접 붙지 못합니다
+    브라우저  ────▶  자기 서버  ────▶  JSON Ledger API
+
+CORS
+say "그래서 화면이 있는 애플리케이션에는 ${B}서버가 반드시 있습니다.${R} 취향이 아니라"
+say "원장에 붙을 수 있는 것이 서버뿐이기 때문입니다."
+printf '\n'
+note "공식 문서도 프론트엔드가 원장에 직접 붙지 않는 구성을 기본으로 둡니다."
+note "  https://docs.canton.network/appdev/modules/m4-app-architecture"
+
+# ─── 12 ──────────────────────────────────────────────────────────────────────
+
 title "확인한 것"
 cat <<SUMMARY
 
@@ -526,6 +578,7 @@ cat <<SUMMARY
   저장 원자성          상태와 offset 을 같은 트랜잭션에 씁니다
   commandId          같은 값으로 재시도하면 중복 실행되지 않습니다
   Contract ID        외부 키로 쓰면 안 됩니다. 업무 키는 Template 필드에 둡니다
+  브라우저            원장에 직접 붙지 못합니다. 화면과 원장 사이에는 서버가 있습니다
 
   ${B}확인하지 못한 것${R}
 
@@ -534,6 +587,8 @@ cat <<SUMMARY
   규칙은 같습니다
   여러 Party 를 한 애플리케이션이 따라가는 경우
   ACS 가 큰 경우의 분할 조회
+  화면이 붙은 완전한 애플리케이션 — 공식 레퍼런스 cn-quickstart 가 보여줍니다
+  https://github.com/digital-asset/cn-quickstart
 
 SUMMARY
 
